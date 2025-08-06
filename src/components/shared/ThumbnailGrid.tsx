@@ -5,7 +5,6 @@ import { VideoPlayer } from '../VideoPlayer';
 import { VideoControls } from '../shared/VideoControls';
 import { StreamInfo } from '../shared/StreamInfo';
 import { ProgressBar } from '../shared/ProgressBar';
-import { cn } from '../../utils/cn';
 
 const { Text } = Typography;
 

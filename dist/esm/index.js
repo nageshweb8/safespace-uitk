@@ -1,102 +1,11 @@
 import { jsxs, jsx, Fragment } from 'react/jsx-runtime';
-import React, { useState, useCallback, useMemo, useRef, useEffect, createContext, useContext } from 'react';
-import { Tooltip, Button, Typography, Modal, Card, ConfigProvider } from 'antd';
+import { useRef, useEffect, useState, useCallback, createContext, useContext, useMemo } from 'react';
+import { Tooltip, Button, Typography, Card, Modal, ConfigProvider } from 'antd';
 export { Button, Card, Modal, Progress, Tooltip, Typography } from 'antd';
 import { PauseOutlined, PlayCircleOutlined, MutedOutlined, SoundOutlined, ArrowsAltOutlined, ReloadOutlined, ShrinkOutlined } from '@ant-design/icons';
 import Hls from 'hls.js';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-
-function useVideoPlayer(streams, initialAutoPlay = true, initialMuted = true, onStreamChange, onError) {
-    const [activeStreamIndex, setActiveStreamIndex] = useState(0);
-    const [isPlaying, setIsPlaying] = useState(initialAutoPlay);
-    const [isMuted, setIsMuted] = useState(initialMuted);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [error, setErrorState] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const togglePlayPause = useCallback(() => {
-        setIsPlaying(prev => !prev);
-    }, []);
-    const toggleMute = useCallback(() => {
-        setIsMuted(prev => !prev);
-    }, []);
-    const toggleFullscreen = useCallback(() => {
-        setIsFullscreen(prev => !prev);
-    }, []);
-    const clearError = useCallback(() => {
-        setErrorState(null);
-    }, []);
-    const setError = useCallback((error) => {
-        setErrorState(error);
-    }, []);
-    const setLoading = useCallback((loading) => {
-        setIsLoading(loading);
-    }, []);
-    const handleStreamChange = useCallback((streamIndex) => {
-        if (streamIndex >= 0 && streamIndex < streams.length) {
-            setActiveStreamIndex(streamIndex);
-            setErrorState(null);
-            onStreamChange?.(streams[streamIndex]);
-        }
-    }, [streams, onStreamChange]);
-    const handleError = useCallback((error, stream) => {
-        const errorMessage = error.message;
-        setErrorState(errorMessage);
-        onError?.(error, stream || streams[activeStreamIndex]);
-    }, [streams, activeStreamIndex, onError]);
-    const handleRetry = useCallback(() => {
-        setErrorState(null);
-        setIsLoading(true);
-        // Force re-render by updating the active stream index
-        setActiveStreamIndex(prev => prev);
-    }, []);
-    return {
-        // State
-        activeStreamIndex,
-        isPlaying,
-        isMuted,
-        isFullscreen,
-        error,
-        isLoading,
-        // Actions
-        setActiveStreamIndex,
-        togglePlayPause,
-        toggleMute,
-        toggleFullscreen,
-        clearError,
-        setError,
-        setLoading,
-        handleStreamChange,
-        handleError,
-        handleRetry,
-    };
-}
-
-function useStreamLayout(streamCount) {
-    return useMemo(() => {
-        if (streamCount === 1) {
-            return {
-                container: 'grid grid-cols-1 gap-4 h-full',
-                mainVideo: 'w-full h-full',
-                thumbnailContainer: 'hidden'
-            };
-        }
-        else if (streamCount === 2) {
-            return {
-                container: 'grid grid-cols-2 gap-4 h-full',
-                mainVideo: 'w-full h-full',
-                thumbnailContainer: 'w-full h-full'
-            };
-        }
-        else {
-            return {
-                container: 'grid grid-cols-4 gap-4 h-full',
-                mainVideo: 'col-span-3 w-full h-full',
-                thumbnailContainer: 'col-span-1 w-full h-full'
-            };
-        }
-    }, [streamCount]);
-}
 
 /**
  * Utility function to combine Tailwind CSS classes with proper conflict resolution
@@ -229,10 +138,6 @@ const ProgressBar = ({ progress, className, size = 'medium', color = 'white' }) 
     return (jsx("div", { className: cn('absolute bottom-0 left-0 right-0 px-2 pb-1', className), children: jsx("div", { className: cn('w-full rounded', sizeClasses[size], backgroundClasses[color]), children: jsx("div", { className: cn('h-full rounded transition-all duration-300', colorClasses[color]), style: { width: `${Math.min(Math.max(progress, 0), 100)}%` } }) }) }));
 };
 
-const MainVideoPlayer = ({ stream, isPlaying, isMuted, error, showControls, streamCount, onPlayPause, onMuteUnmute, onFullscreen, onRetry, onError, className }) => {
-    return (jsx("div", { className: cn('relative w-full h-full overflow-hidden rounded-lg bg-black', className), children: error ? (jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxs("div", { className: "text-center", children: [jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: error }), jsx(Button, { type: "primary", icon: jsx(ReloadOutlined, {}), onClick: onRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxs(Fragment, { children: [jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: false, onError: onError }, `${stream.id}-${Date.now()}`), jsx(StreamInfo, { stream: stream, showLiveIndicator: true }), jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onPlayPause, onMuteUnmute: onMuteUnmute, onFullscreen: onFullscreen, showControls: showControls && streamCount > 2, size: "medium" }), streamCount > 2 && (jsx(ProgressBar, { progress: 65, size: "medium", color: "white", className: "px-3 pb-2" }))] })) }));
-};
-
 const { Text: Text$1 } = Typography;
 const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscreen, layout, maxVisible = 3 }) => {
     const streamCount = streams.length;
@@ -253,72 +158,60 @@ const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscree
     return null;
 };
 
-const FullscreenModal = ({ isOpen, stream, isPlaying, isMuted, onClose, onError }) => {
-    return (jsx(Modal, { open: isOpen, onCancel: onClose, footer: null, width: "90vw", centered: true, closable: false, bodyStyle: { padding: 0, height: '90vh' }, className: "fullscreen-modal", destroyOnClose: true, children: jsxs("div", { className: "relative h-full bg-black", children: [jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: true, className: "h-full", onError: onError }, `modal-${stream.id}`), jsx(Button, { type: "text", size: "large", icon: jsx(ShrinkOutlined, {}), onClick: onClose, className: "absolute top-4 right-4 text-white hover:text-gray-300 z-10", title: "Close Fullscreen" }), jsxs("div", { className: "absolute top-4 left-4 bg-black/70 text-white px-4 py-2 rounded", children: [jsx("div", { className: "text-lg font-medium", children: stream.title }), stream.metadata && (jsxs("div", { className: "text-sm opacity-75", children: [stream.metadata.resolution, " \u2022 ", stream.metadata.fps, "fps", stream.metadata.bitrate && ` • ${stream.metadata.bitrate}`] }))] })] }) }));
-};
-
 const { Text } = Typography;
-const LiveFeedPlayer = ({ streams, className, autoPlay = true, muted = true, controls = true, showThumbnails = true, onStreamChange, onError, theme = 'light', title = 'Live Feed', subtitle = 'All pinned cameras will be displayed here', maxThumbnails = 3, enableFullscreen = true, enableKeyboardControls = true }) => {
-    const { activeStreamIndex, isPlaying, isMuted, isFullscreen, error, togglePlayPause, toggleMute, toggleFullscreen, handleStreamChange, handleError, handleRetry, } = useVideoPlayer(streams, autoPlay, muted, onStreamChange, onError);
-    const layoutClasses = useStreamLayout(streams.length);
-    const streamCount = streams.length;
-    const activeStream = streams[activeStreamIndex];
-    const themeClasses = {
-        light: 'bg-white border-gray-200',
-        dark: 'bg-gray-900 border-gray-700'
-    };
-    // Keyboard controls
-    React.useEffect(() => {
-        if (!enableKeyboardControls)
-            return;
-        const handleKeyPress = (event) => {
-            switch (event.key) {
-                case ' ':
-                    event.preventDefault();
-                    togglePlayPause();
-                    break;
-                case 'm':
-                case 'M':
-                    event.preventDefault();
-                    toggleMute();
-                    break;
-                case 'f':
-                case 'F':
-                    event.preventDefault();
-                    if (enableFullscreen) {
-                        toggleFullscreen();
-                    }
-                    break;
-                case 'ArrowRight':
-                    event.preventDefault();
-                    if (activeStreamIndex < streams.length - 1) {
-                        handleStreamChange(activeStreamIndex + 1);
-                    }
-                    break;
-                case 'ArrowLeft':
-                    event.preventDefault();
-                    if (activeStreamIndex > 0) {
-                        handleStreamChange(activeStreamIndex - 1);
-                    }
-                    break;
-            }
+const getLayoutClasses = (streamCount) => {
+    if (streamCount === 1) {
+        return {
+            container: 'grid grid-cols-1 gap-4 h-full',
+            mainVideo: 'w-full h-full',
+            thumbnailContainer: 'hidden'
         };
-        document.addEventListener('keydown', handleKeyPress);
-        return () => document.removeEventListener('keydown', handleKeyPress);
-    }, [
-        enableKeyboardControls,
-        togglePlayPause,
-        toggleMute,
-        toggleFullscreen,
-        enableFullscreen,
-        activeStreamIndex,
-        streams.length,
-        handleStreamChange
-    ]);
-    if (!streams.length) {
-        return (jsx(Card, { className: cn('w-full h-full', themeClasses[theme], className), children: jsx("div", { className: "flex items-center justify-center h-64", children: jsxs("div", { className: "text-center", children: [jsx("div", { className: "text-4xl mb-4", children: "\uD83D\uDCF9" }), jsx(Text, { type: "secondary", className: "text-lg", children: "No camera streams available" }), jsx("br", {}), jsx(Text, { type: "secondary", className: "text-sm", children: "Please add camera streams to view live feeds" })] }) }) }));
     }
-    return (jsxs(Fragment, { children: [jsx(Card, { className: cn('w-full h-full', themeClasses[theme], className), bodyStyle: { padding: 16, height: '100%' }, children: jsxs("div", { className: "flex flex-col h-full", children: [jsx("div", { className: "mb-4 flex-shrink-0", children: jsxs("div", { className: "flex items-center justify-between", children: [jsxs("div", { children: [jsx(Text, { strong: true, className: "text-base block", children: title }), jsx(Text, { type: "secondary", className: "text-sm", children: subtitle })] }), enableKeyboardControls && (jsx("div", { className: "text-xs text-gray-400", children: jsx(Text, { type: "secondary", className: "text-xs", children: "Keyboard: Space (play/pause), M (mute), F (fullscreen), \u2190\u2192 (switch)" }) }))] }) }), jsxs("div", { className: layoutClasses.container, children: [jsx("div", { className: layoutClasses.mainVideo, children: jsx(MainVideoPlayer, { stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, error: error, showControls: controls, streamCount: streamCount, onPlayPause: togglePlayPause, onMuteUnmute: toggleMute, onFullscreen: toggleFullscreen, onRetry: handleRetry, onError: handleError }) }), showThumbnails && streamCount > 1 && (jsx("div", { className: layoutClasses.thumbnailContainer, children: jsx(ThumbnailGrid, { streams: streams, activeStreamIndex: activeStreamIndex, onStreamSelect: handleStreamChange, onFullscreen: toggleFullscreen, layout: streamCount === 2 ? 'horizontal' : 'vertical', maxVisible: maxThumbnails }) }))] })] }) }), enableFullscreen && (jsx(FullscreenModal, { isOpen: isFullscreen, stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, onClose: () => toggleFullscreen(), onError: handleError }))] }));
+    else if (streamCount === 2) {
+        return {
+            container: 'grid grid-cols-2 gap-4 h-full',
+            mainVideo: 'w-full h-full',
+            thumbnailContainer: 'w-full h-full'
+        };
+    }
+    else {
+        return {
+            container: 'grid grid-cols-4 gap-4 h-full',
+            mainVideo: 'col-span-3 w-full h-full',
+            thumbnailContainer: 'col-span-1 w-full h-full'
+        };
+    }
+};
+const themeClasses = {
+    light: 'bg-white border-gray-200',
+    dark: 'bg-gray-900 border-gray-700'
+};
+const LiveFeedPlayer = ({ streams, className, autoPlay = true, muted = true, showThumbnails = true, onStreamChange, onError, theme = 'light', title = 'Live Feed', subtitle = 'All pinned cameras will be displayed here' }) => {
+    const [activeStreamIndex, setActiveStreamIndex] = useState(0);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isPlaying] = useState(autoPlay);
+    const [isMuted] = useState(muted);
+    const [error, setError] = useState(null);
+    const activeStream = streams[activeStreamIndex];
+    const streamCount = streams.length;
+    const layoutClasses = getLayoutClasses(streamCount);
+    const handleStreamChange = useCallback((streamIndex) => {
+        setActiveStreamIndex(streamIndex);
+        setError(null);
+        onStreamChange?.(streams[streamIndex]);
+    }, [onStreamChange, streams]);
+    const handleError = useCallback((error, stream) => {
+        setError(error.message);
+        onError?.(error, stream || activeStream);
+    }, [onError, activeStream]);
+    const handleRetry = useCallback(() => {
+        setError(null);
+        setActiveStreamIndex(prev => prev);
+    }, []);
+    if (!streams.length) {
+        return (jsx(Card, { className: cn('w-full h-full', themeClasses[theme], className), children: jsx("div", { className: "flex items-center justify-center h-64", children: jsx(Text, { type: "secondary", children: "No camera streams available" }) }) }));
+    }
+    return (jsxs(Fragment, { children: [jsx(Card, { className: cn('w-full h-full', themeClasses[theme], className), bodyStyle: { padding: 16, height: '100%' }, children: jsxs("div", { className: "flex flex-col h-full", children: [jsxs("div", { className: "mb-4 flex-shrink-0", children: [jsx(Text, { strong: true, className: "text-base block", children: title }), jsx(Text, { type: "secondary", className: "text-sm", children: subtitle })] }), jsxs("div", { className: layoutClasses.container, children: [jsx("div", { className: layoutClasses.mainVideo, children: jsx("div", { className: "relative w-full h-full overflow-hidden rounded-lg bg-black", children: error ? (jsxs("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: [jsx(Text, { className: "text-white mb-2", children: "Failed to load stream" }), jsx(Button, { type: "primary", icon: jsx(ReloadOutlined, {}), onClick: handleRetry, children: "Retry" })] })) : (jsxs(Fragment, { children: [jsx(VideoPlayer, { stream: activeStream, autoPlay: isPlaying, muted: isMuted, controls: false, onError: (error) => handleError(error, activeStream) }, `${activeStream.id}-${Date.now()}`), jsxs("div", { className: "absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded", children: [activeStream.title, activeStream.isLive && (jsx("span", { className: "ml-2 px-1 bg-red-600 rounded text-[10px]", children: "LIVE" }))] }), jsx("div", { className: "absolute top-2 right-2", children: jsx(Button, { type: "text", size: "small", icon: jsx(ArrowsAltOutlined, {}), onClick: () => setIsModalOpen(true), className: "text-white hover:text-gray-300", title: "Expand" }) })] })) }) }), showThumbnails && streamCount > 1 && (jsx("div", { className: layoutClasses.thumbnailContainer, children: jsx(ThumbnailGrid, { streams: streams, activeStreamIndex: activeStreamIndex, onStreamSelect: handleStreamChange, onFullscreen: () => setIsModalOpen(true), layout: streamCount === 2 ? 'horizontal' : 'vertical' }) }))] })] }) }), jsx(Modal, { open: isModalOpen, onCancel: () => setIsModalOpen(false), footer: null, width: "90vw", centered: true, closable: false, bodyStyle: { padding: 0, height: '90vh' }, className: "fullscreen-modal", children: jsxs("div", { className: "relative h-full bg-black", children: [jsx(VideoPlayer, { stream: activeStream, autoPlay: isPlaying, muted: isMuted, controls: true, className: "h-full", onError: (error) => handleError(error, activeStream) }, `modal-${activeStream.id}`), jsx(Button, { type: "text", size: "large", icon: jsx(ShrinkOutlined, {}), onClick: () => setIsModalOpen(false), className: "absolute top-4 right-4 text-white hover:text-gray-300 z-10", title: "Exit fullscreen" })] }) })] }));
 };
 
 const defaultTheme = {
@@ -519,9 +412,100 @@ const useSafeSpaceTheme = () => {
     return context;
 };
 
-// Main exports
-// Version
-const version = '0.1.0';
+function useVideoPlayer(streams, initialAutoPlay = true, initialMuted = true, onStreamChange, onError) {
+    const [activeStreamIndex, setActiveStreamIndex] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(initialAutoPlay);
+    const [isMuted, setIsMuted] = useState(initialMuted);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [error, setErrorState] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const togglePlayPause = useCallback(() => {
+        setIsPlaying(prev => !prev);
+    }, []);
+    const toggleMute = useCallback(() => {
+        setIsMuted(prev => !prev);
+    }, []);
+    const toggleFullscreen = useCallback(() => {
+        setIsFullscreen(prev => !prev);
+    }, []);
+    const clearError = useCallback(() => {
+        setErrorState(null);
+    }, []);
+    const setError = useCallback((error) => {
+        setErrorState(error);
+    }, []);
+    const setLoading = useCallback((loading) => {
+        setIsLoading(loading);
+    }, []);
+    const handleStreamChange = useCallback((streamIndex) => {
+        if (streamIndex >= 0 && streamIndex < streams.length) {
+            setActiveStreamIndex(streamIndex);
+            setErrorState(null);
+            onStreamChange?.(streams[streamIndex]);
+        }
+    }, [streams, onStreamChange]);
+    const handleError = useCallback((error, stream) => {
+        const errorMessage = error.message;
+        setErrorState(errorMessage);
+        onError?.(error, stream || streams[activeStreamIndex]);
+    }, [streams, activeStreamIndex, onError]);
+    const handleRetry = useCallback(() => {
+        setErrorState(null);
+        setIsLoading(true);
+        // Force re-render by updating the active stream index
+        setActiveStreamIndex(prev => prev);
+    }, []);
+    return {
+        // State
+        activeStreamIndex,
+        isPlaying,
+        isMuted,
+        isFullscreen,
+        error,
+        isLoading,
+        // Actions
+        setActiveStreamIndex,
+        togglePlayPause,
+        toggleMute,
+        toggleFullscreen,
+        clearError,
+        setError,
+        setLoading,
+        handleStreamChange,
+        handleError,
+        handleRetry,
+    };
+}
 
-export { FullscreenModal, LiveFeedPlayer, MainVideoPlayer, ProgressBar, SafeSpaceThemeProvider, StreamInfo, ThumbnailGrid, VideoControls, VideoPlayer, cn, defaultTheme, themeVariants, useSafeSpaceTheme, useStreamLayout, useVideoPlayer, version };
+function useStreamLayout(streamCount) {
+    return useMemo(() => {
+        if (streamCount === 1) {
+            return {
+                container: 'grid grid-cols-1 gap-4 h-full',
+                mainVideo: 'w-full h-full',
+                thumbnailContainer: 'hidden'
+            };
+        }
+        else if (streamCount === 2) {
+            return {
+                container: 'grid grid-cols-2 gap-4 h-full',
+                mainVideo: 'w-full h-full',
+                thumbnailContainer: 'w-full h-full'
+            };
+        }
+        else {
+            return {
+                container: 'grid grid-cols-4 gap-4 h-full',
+                mainVideo: 'col-span-3 w-full h-full',
+                thumbnailContainer: 'col-span-1 w-full h-full'
+            };
+        }
+    }, [streamCount]);
+}
+
+// Main component exports
+// Version
+const version = '0.1.3';
+
+export { LiveFeedPlayer, ProgressBar, SafeSpaceThemeProvider, StreamInfo, ThumbnailGrid, VideoControls, VideoPlayer, cn, useSafeSpaceTheme, useStreamLayout, useVideoPlayer, version };
 //# sourceMappingURL=index.js.map
