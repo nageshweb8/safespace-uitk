@@ -1,0 +1,192 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* SafeSpace UI Toolkit Base Styles */
+@layer base {
+  :root {
+    --safespace-primary-50: 240 249 255;
+    --safespace-primary-100: 224 242 254;
+    --safespace-primary-200: 186 230 253;
+    --safespace-primary-300: 125 211 252;
+    --safespace-primary-400: 56 189 248;
+    --safespace-primary-500: 14 165 233;
+    --safespace-primary-600: 2 132 199;
+    --safespace-primary-700: 3 105 161;
+    --safespace-primary-800: 7 89 133;
+    --safespace-primary-900: 12 74 110;
+  }
+
+  * {
+    border-color: theme('colors.safespace.gray.200');
+  }
+
+  body {
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+}
+
+@layer components {
+  /* SafeSpace Button Variants */
+  .ss-btn {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background;
+  }
+
+  .ss-btn-primary {
+    @apply bg-safespace-primary-500 text-white hover:bg-safespace-primary-600 active:bg-safespace-primary-700;
+  }
+
+  .ss-btn-secondary {
+    @apply bg-safespace-gray-100 text-safespace-gray-900 hover:bg-safespace-gray-200 active:bg-safespace-gray-300;
+  }
+
+  .ss-btn-outline {
+    @apply border border-safespace-gray-300 bg-transparent text-safespace-gray-700 hover:bg-safespace-gray-50 active:bg-safespace-gray-100;
+  }
+
+  .ss-btn-ghost {
+    @apply bg-transparent text-safespace-gray-700 hover:bg-safespace-gray-100 active:bg-safespace-gray-200;
+  }
+
+  /* SafeSpace Card Variants */
+  .ss-card {
+    @apply rounded-lg border border-safespace-gray-200 bg-white shadow-safespace-sm;
+  }
+
+  .ss-card-elevated {
+    @apply shadow-safespace-md;
+  }
+
+  .ss-card-floating {
+    @apply shadow-safespace-lg;
+  }
+
+  /* SafeSpace Video Player */
+  .ss-video-player {
+    @apply relative overflow-hidden rounded-lg bg-black;
+  }
+
+  .ss-video-controls {
+    @apply absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4;
+  }
+
+  .ss-video-overlay {
+    @apply absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100;
+  }
+
+  /* SafeSpace Theme Variants */
+  .theme-prison {
+    --safespace-primary-500: 239 68 68;
+    --safespace-primary-600: 220 38 38;
+    --safespace-primary-700: 185 28 28;
+  }
+
+  .theme-school {
+    --safespace-primary-500: 34 197 94;
+    --safespace-primary-600: 22 163 74;
+    --safespace-primary-700: 21 128 61;
+  }
+
+  .theme-mall {
+    --safespace-primary-500: 234 179 8;
+    --safespace-primary-600: 202 138 4;
+    --safespace-primary-700: 161 98 7;
+  }
+
+  .theme-snl {
+    --safespace-primary-500: 168 85 247;
+    --safespace-primary-600: 147 51 234;
+    --safespace-primary-700: 124 58 237;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  /* Scrollbar utilities */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thumb-gray {
+    scrollbar-color: theme('colors.safespace.gray.400') transparent;
+  }
+}
+
+/* Ant Design Overrides for SafeSpace */
+.ant-btn {
+  @apply font-medium;
+}
+
+.ant-card {
+  @apply shadow-safespace-sm;
+}
+
+.ant-modal-content {
+  @apply rounded-lg;
+}
+
+.ant-progress-bg {
+  @apply transition-all duration-300;
+}
+
+/* Custom fullscreen modal styles */
+.fullscreen-modal .ant-modal {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100vh !important;
+}
+
+.fullscreen-modal .ant-modal-content {
+  height: 100vh !important;
+  border-radius: 0 !important;
+}
+
+/* Live stream indicator */
+.live-indicator {
+  position: relative;
+}
+
+.live-indicator::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateY(-50%) scale(1.5);
+  }
+}
