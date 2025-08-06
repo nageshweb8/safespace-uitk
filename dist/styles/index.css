@@ -841,6 +841,9 @@ select {
 .min-h-0 {
   min-height: 0px;
 }
+.min-h-\[400px\] {
+  min-height: 400px;
+}
 .w-4 {
   width: 1rem;
 }

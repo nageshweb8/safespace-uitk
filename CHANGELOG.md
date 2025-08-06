@@ -5,6 +5,36 @@ All notable changes to the SafeSpace UI Toolkit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2024-08-06
+
+### Added
+- Keyboard shortcuts support: Space (play/pause), M (mute), F (fullscreen), ←→ (switch streams)
+- Enhanced video player hooks with `useVideoPlayer` and `useStreamLayout`
+- Better component architecture with dedicated MainVideoPlayer and FullscreenModal
+- Development playground excluded from builds (playground/, playgroud/)
+- Comprehensive .npmignore for cleaner package distribution
+
+### Fixed
+- **CRITICAL**: Thumbnails now auto-play correctly (changed from autoPlay={false} to autoPlay={true})
+- **CRITICAL**: Fixed main video height jerking when switching streams (added min-height and aspect-ratio constraints)
+- Removed duplicate LiveFeedPlayer files - consolidated to single enhanced version
+- Fixed import paths after component restructuring
+- Enhanced error handling and loading states
+
+### Changed
+- Moved MainVideoPlayer and FullscreenModal to shared components directory
+- Improved video player architecture with custom hooks
+- Enhanced LiveFeedPlayer with keyboard controls and better state management
+- Better aspect ratio handling (16:9) with minimum height constraints
+- Playground now properly excluded from npm package builds
+
+### Improved
+- Smoother video transitions with proper height management
+- Better thumbnail video playback experience
+- Enhanced developer experience with playground for feature testing
+- More stable video layout that doesn't jump during stream switching
+- Better component organization and reusability
+
 ## [0.1.3] - 2024-01-XX
 
 ### Added

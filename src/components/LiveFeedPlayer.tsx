@@ -1,104 +1,118 @@
-import React, { useState, useCallback } from 'react';
-import { Modal, Card, Typography, Button } from 'antd';
-import { ArrowsAltOutlined, ShrinkOutlined, ReloadOutlined } from '@ant-design/icons';
-import { VideoPlayer } from './VideoPlayer/VideoPlayer';
+import React from 'react';
+import { Card, Typography } from 'antd';
+import { LiveFeedPlayerProps } from '../types/video';
+import { useVideoPlayer } from '../hooks/useVideoPlayer';
+import { useStreamLayout } from '../hooks/useStreamLayout';
+import { MainVideoPlayer } from './shared/MainVideoPlayer';
 import { ThumbnailGrid } from './shared/ThumbnailGrid';
-import { CameraStream } from '../types/video';
+import { FullscreenModal } from './shared/FullscreenModal';
 import { cn } from '../utils/cn';
 
 const { Text } = Typography;
-
-export interface LiveFeedPlayerProps {
-  streams: CameraStream[];
-  className?: string;
-  autoPlay?: boolean;
-  muted?: boolean;
-  controls?: boolean;
-  showThumbnails?: boolean;
-  onStreamChange?: (stream: CameraStream) => void;
-  onError?: (error: Error, stream: CameraStream) => void;
-  theme?: 'light' | 'dark';
-  aspectRatio?: '16:9' | '4:3' | '1:1';
-  title?: string;
-  subtitle?: string;
-}
-
-interface LayoutConfig {
-  container: string;
-  mainVideo: string;
-  thumbnailContainer: string;
-}
-
-const getLayoutClasses = (streamCount: number): LayoutConfig => {
-  if (streamCount === 1) {
-    return {
-      container: 'grid grid-cols-1 gap-4 h-full',
-      mainVideo: 'w-full h-full',
-      thumbnailContainer: 'hidden'
-    };
-  } else if (streamCount === 2) {
-    return {
-      container: 'grid grid-cols-2 gap-4 h-full',
-      mainVideo: 'w-full h-full',
-      thumbnailContainer: 'w-full h-full'
-    };
-  } else {
-    return {
-      container: 'grid grid-cols-4 gap-4 h-full',
-      mainVideo: 'col-span-3 w-full h-full',
-      thumbnailContainer: 'col-span-1 w-full h-full'
-    };
-  }
-};
-
-const themeClasses = {
-  light: 'bg-white border-gray-200',
-  dark: 'bg-gray-900 border-gray-700'
-};
 
 export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
   streams,
   className,
   autoPlay = true,
   muted = true,
+  controls = true,
   showThumbnails = true,
   onStreamChange,
   onError,
   theme = 'light',
   title = 'Live Feed',
-  subtitle = 'All pinned cameras will be displayed here'
+  subtitle = 'All pinned cameras will be displayed here',
+  maxThumbnails = 3,
+  enableFullscreen = true,
+  enableKeyboardControls = true
 }) => {
-  const [activeStreamIndex, setActiveStreamIndex] = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPlaying] = useState(autoPlay);
-  const [isMuted] = useState(muted);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    activeStreamIndex,
+    isPlaying,
+    isMuted,
+    isFullscreen,
+    error,
+    togglePlayPause,
+    toggleMute,
+    toggleFullscreen,
+    handleStreamChange,
+    handleError,
+    handleRetry,
+  } = useVideoPlayer(streams, autoPlay, muted, onStreamChange, onError);
 
-  const activeStream = streams[activeStreamIndex];
+  const layoutClasses = useStreamLayout(streams.length);
   const streamCount = streams.length;
-  const layoutClasses = getLayoutClasses(streamCount);
+  const activeStream = streams[activeStreamIndex];
 
-  const handleStreamChange = useCallback((streamIndex: number) => {
-    setActiveStreamIndex(streamIndex);
-    setError(null);
-    onStreamChange?.(streams[streamIndex]);
-  }, [onStreamChange, streams]);
+  const themeClasses = {
+    light: 'bg-white border-gray-200',
+    dark: 'bg-gray-900 border-gray-700'
+  };
 
-  const handleError = useCallback((error: Error, stream?: CameraStream) => {
-    setError(error.message);
-    onError?.(error, stream || activeStream);
-  }, [onError, activeStream]);
+  // Keyboard controls
+  React.useEffect(() => {
+    if (!enableKeyboardControls) return;
 
-  const handleRetry = useCallback(() => {
-    setError(null);
-    setActiveStreamIndex(prev => prev);
-  }, []);
+    const handleKeyPress = (event: KeyboardEvent) => {
+      switch (event.key) {
+        case ' ':
+          event.preventDefault();
+          togglePlayPause();
+          break;
+        case 'm':
+        case 'M':
+          event.preventDefault();
+          toggleMute();
+          break;
+        case 'f':
+        case 'F':
+          event.preventDefault();
+          if (enableFullscreen) {
+            toggleFullscreen();
+          }
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          if (activeStreamIndex < streams.length - 1) {
+            handleStreamChange(activeStreamIndex + 1);
+          }
+          break;
+        case 'ArrowLeft':
+          event.preventDefault();
+          if (activeStreamIndex > 0) {
+            handleStreamChange(activeStreamIndex - 1);
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [
+    enableKeyboardControls,
+    togglePlayPause,
+    toggleMute,
+    toggleFullscreen,
+    enableFullscreen,
+    activeStreamIndex,
+    streams.length,
+    handleStreamChange
+  ]);
 
   if (!streams.length) {
     return (
       <Card className={cn('w-full h-full', themeClasses[theme], className)}>
         <div className="flex items-center justify-center h-64">
-          <Text type="secondary">No camera streams available</Text>
+          <div className="text-center">
+            <div className="text-4xl mb-4">📹</div>
+            <Text type="secondary" className="text-lg">
+              No camera streams available
+            </Text>
+            <br />
+            <Text type="secondary" className="text-sm">
+              Please add camera streams to view live feeds
+            </Text>
+          </div>
         </div>
       </Card>
     );
@@ -113,57 +127,40 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="mb-4 flex-shrink-0">
-            <Text strong className="text-base block">{title}</Text>
-            <Text type="secondary" className="text-sm">
-              {subtitle}
-            </Text>
+            <div className="flex items-center justify-between">
+              <div>
+                <Text strong className="text-base block">{title}</Text>
+                <Text type="secondary" className="text-sm">
+                  {subtitle}
+                </Text>
+              </div>
+              {enableKeyboardControls && (
+                <div className="text-xs text-gray-400">
+                  <Text type="secondary" className="text-xs">
+                    Keyboard: Space (play/pause), M (mute), F (fullscreen), ←→ (switch)
+                  </Text>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Video Layout */}
           <div className={layoutClasses.container}>
             {/* Main Video Area */}
             <div className={layoutClasses.mainVideo}>
-              <div className="relative w-full h-full overflow-hidden rounded-lg bg-black">
-                {error ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                    <Text className="text-white mb-2">Failed to load stream</Text>
-                    <Button type="primary" icon={<ReloadOutlined />} onClick={handleRetry}>
-                      Retry
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <VideoPlayer
-                      key={`${activeStream.id}-${Date.now()}`}
-                      stream={activeStream}
-                      autoPlay={isPlaying}
-                      muted={isMuted}
-                      controls={false}
-                      onError={(error) => handleError(error, activeStream)}
-                    />
-                    
-                    {/* Stream info overlay */}
-                    <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                      {activeStream.title}
-                      {activeStream.isLive && (
-                        <span className="ml-2 px-1 bg-red-600 rounded text-[10px]">LIVE</span>
-                      )}
-                    </div>
-
-                    {/* Control buttons */}
-                    <div className="absolute top-2 right-2">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<ArrowsAltOutlined />}
-                        onClick={() => setIsModalOpen(true)}
-                        className="text-white hover:text-gray-300"
-                        title="Expand"
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
+              <MainVideoPlayer
+                stream={activeStream}
+                isPlaying={isPlaying}
+                isMuted={isMuted}
+                error={error}
+                showControls={controls}
+                streamCount={streamCount}
+                onPlayPause={togglePlayPause}
+                onMuteUnmute={toggleMute}
+                onFullscreen={toggleFullscreen}
+                onRetry={handleRetry}
+                onError={handleError}
+              />
             </div>
 
             {/* Thumbnail Grid */}
@@ -173,8 +170,9 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
                   streams={streams}
                   activeStreamIndex={activeStreamIndex}
                   onStreamSelect={handleStreamChange}
-                  onFullscreen={() => setIsModalOpen(true)}
+                  onFullscreen={toggleFullscreen}
                   layout={streamCount === 2 ? 'horizontal' : 'vertical'}
+                  maxVisible={maxThumbnails}
                 />
               </div>
             )}
@@ -183,37 +181,16 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
       </Card>
 
       {/* Fullscreen Modal */}
-      <Modal
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={null}
-        width="90vw"
-        centered
-        closable={false}
-        bodyStyle={{ padding: 0, height: '90vh' }}
-        className="fullscreen-modal"
-      >
-        <div className="relative h-full bg-black">
-          <VideoPlayer
-            key={`modal-${activeStream.id}`}
-            stream={activeStream}
-            autoPlay={isPlaying}
-            muted={isMuted}
-            controls={true}
-            className="h-full"
-            onError={(error) => handleError(error, activeStream)}
-          />
-          
-          <Button
-            type="text"
-            size="large"
-            icon={<ShrinkOutlined />}
-            onClick={() => setIsModalOpen(false)}
-            className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
-            title="Exit fullscreen"
-          />
-        </div>
-      </Modal>
+      {enableFullscreen && (
+        <FullscreenModal
+          isOpen={isFullscreen}
+          stream={activeStream}
+          isPlaying={isPlaying}
+          isMuted={isMuted}
+          onClose={() => toggleFullscreen()}
+          onError={handleError}
+        />
+      )}
     </>
   );
 };
