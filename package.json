@@ -58,9 +58,9 @@
     "prepublishOnly": "npm run validate && npm run build"
   },
   "peerDependencies": {
+    "antd": ">=5.0.0",
     "react": ">=16.8.0",
-    "react-dom": ">=16.8.0",
-    "antd": ">=5.0.0"
+    "react-dom": ">=16.8.0"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^7.6.0",
@@ -102,6 +102,8 @@
   },
   "dependencies": {
     "clsx": "^2.0.0",
+    "konva": "^9.3.22",
+    "react-konva": "^19.0.7",
     "tailwind-merge": "^2.0.0"
   },
   "engines": {

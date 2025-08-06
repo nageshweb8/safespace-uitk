@@ -7,6 +7,7 @@ var icons = require('@ant-design/icons');
 var Hls = require('hls.js');
 var clsx = require('clsx');
 var tailwindMerge = require('tailwind-merge');
+var reactKonva = require('react-konva');
 
 function useVideoPlayer(streams, initialAutoPlay = true, initialMuted = true, onStreamChange, onError) {
     const [activeStreamIndex, setActiveStreamIndex] = React.useState(0);
@@ -234,7 +235,7 @@ const MainVideoPlayer = ({ stream, isPlaying, isMuted, error, showControls, stre
     return (jsxRuntime.jsx("div", { className: cn('relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black', className), style: { aspectRatio: '16/9' }, children: error ? (jsxRuntime.jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsxRuntime.jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: error }), jsxRuntime.jsx(antd.Button, { type: "primary", icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), onClick: onRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: false, onError: onError }, `${stream.id}-${Date.now()}`), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onPlayPause, onMuteUnmute: onMuteUnmute, onFullscreen: onFullscreen, showControls: showControls && streamCount > 2, size: "medium" }), streamCount > 2 && (jsxRuntime.jsx(ProgressBar, { progress: 65, size: "medium", color: "white", className: "px-3 pb-2" }))] })) }));
 };
 
-const { Text: Text$1 } = antd.Typography;
+const { Text: Text$2 } = antd.Typography;
 const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscreen, layout, maxVisible = 3 }) => {
     const streamCount = streams.length;
     if (streamCount === 2 && layout === 'horizontal') {
@@ -249,7 +250,7 @@ const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscree
             .map((stream, index) => ({ stream, index }))
             .filter(({ index }) => index !== activeStreamIndex)
             .slice(0, maxVisible);
-        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "flex flex-col gap-2 h-full", children: [thumbnailStreams.map(({ stream, index }) => (jsxRuntime.jsxs("div", { className: "relative overflow-hidden rounded-md bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all flex-1 min-h-0", onClick: () => onStreamSelect(index), children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true, className: "text-[10px] px-1 py-0.5" }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: false, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 30 + (index * 10), size: "small", color: "white", className: "px-1 pb-0.5" })] }, stream.id))), streams.length > maxVisible + 1 && (jsxRuntime.jsx("div", { className: "text-center py-1", children: jsxRuntime.jsxs(Text$1, { className: "text-xs text-gray-500", children: ["+", streams.length - maxVisible - 1, " more"] }) }))] }) }));
+        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "flex flex-col gap-2 h-full", children: [thumbnailStreams.map(({ stream, index }) => (jsxRuntime.jsxs("div", { className: "relative overflow-hidden rounded-md bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all flex-1 min-h-0", onClick: () => onStreamSelect(index), children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true, className: "text-[10px] px-1 py-0.5" }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: false, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 30 + (index * 10), size: "small", color: "white", className: "px-1 pb-0.5" })] }, stream.id))), streams.length > maxVisible + 1 && (jsxRuntime.jsx("div", { className: "text-center py-1", children: jsxRuntime.jsxs(Text$2, { className: "text-xs text-gray-500", children: ["+", streams.length - maxVisible - 1, " more"] }) }))] }) }));
     }
     return null;
 };
@@ -258,7 +259,7 @@ const FullscreenModal = ({ isOpen, stream, isPlaying, isMuted, onClose, onError 
     return (jsxRuntime.jsx(antd.Modal, { open: isOpen, onCancel: onClose, footer: null, width: "90vw", centered: true, closable: false, bodyStyle: { padding: 0, height: '90vh' }, className: "fullscreen-modal", destroyOnClose: true, children: jsxRuntime.jsxs("div", { className: "relative h-full bg-black", children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: true, className: "h-full", onError: onError }, `modal-${stream.id}`), jsxRuntime.jsx(antd.Button, { type: "text", size: "large", icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}), onClick: onClose, className: "absolute top-4 right-4 text-white hover:text-gray-300 z-10", title: "Close Fullscreen" }), jsxRuntime.jsxs("div", { className: "absolute top-4 left-4 bg-black/70 text-white px-4 py-2 rounded", children: [jsxRuntime.jsx("div", { className: "text-lg font-medium", children: stream.title }), stream.metadata && (jsxRuntime.jsxs("div", { className: "text-sm opacity-75", children: [stream.metadata.resolution, " \u2022 ", stream.metadata.fps, "fps", stream.metadata.bitrate && ` • ${stream.metadata.bitrate}`] }))] })] }) }));
 };
 
-const { Text } = antd.Typography;
+const { Text: Text$1 } = antd.Typography;
 const LiveFeedPlayer = ({ streams, className, autoPlay = true, muted = true, controls = true, showThumbnails = true, onStreamChange, onError, theme = 'light', title = 'Live Feed', subtitle = 'All pinned cameras will be displayed here', maxThumbnails = 3, enableFullscreen = true, enableKeyboardControls = true }) => {
     const { activeStreamIndex, isPlaying, isMuted, isFullscreen, error, togglePlayPause, toggleMute, toggleFullscreen, handleStreamChange, handleError, handleRetry, } = useVideoPlayer(streams, autoPlay, muted, onStreamChange, onError);
     const layoutClasses = useStreamLayout(streams.length);
@@ -317,9 +318,287 @@ const LiveFeedPlayer = ({ streams, className, autoPlay = true, muted = true, con
         handleStreamChange
     ]);
     if (!streams.length) {
-        return (jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), children: jsxRuntime.jsx("div", { className: "flex items-center justify-center h-64", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-4xl mb-4", children: "\uD83D\uDCF9" }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-lg", children: "No camera streams available" }), jsxRuntime.jsx("br", {}), jsxRuntime.jsx(Text, { type: "secondary", className: "text-sm", children: "Please add camera streams to view live feeds" })] }) }) }));
+        return (jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), children: jsxRuntime.jsx("div", { className: "flex items-center justify-center h-64", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-4xl mb-4", children: "\uD83D\uDCF9" }), jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-lg", children: "No camera streams available" }), jsxRuntime.jsx("br", {}), jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-sm", children: "Please add camera streams to view live feeds" })] }) }) }));
     }
-    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), bodyStyle: { padding: 16, height: '100%' }, children: jsxRuntime.jsxs("div", { className: "flex flex-col h-full", children: [jsxRuntime.jsx("div", { className: "mb-4 flex-shrink-0", children: jsxRuntime.jsxs("div", { className: "flex items-center justify-between", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { strong: true, className: "text-base block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-sm", children: subtitle })] }), enableKeyboardControls && (jsxRuntime.jsx("div", { className: "text-xs text-gray-400", children: jsxRuntime.jsx(Text, { type: "secondary", className: "text-xs", children: "Keyboard: Space (play/pause), M (mute), F (fullscreen), \u2190\u2192 (switch)" }) }))] }) }), jsxRuntime.jsxs("div", { className: layoutClasses.container, children: [jsxRuntime.jsx("div", { className: layoutClasses.mainVideo, children: jsxRuntime.jsx(MainVideoPlayer, { stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, error: error, showControls: controls, streamCount: streamCount, onPlayPause: togglePlayPause, onMuteUnmute: toggleMute, onFullscreen: toggleFullscreen, onRetry: handleRetry, onError: handleError }) }), showThumbnails && streamCount > 1 && (jsxRuntime.jsx("div", { className: layoutClasses.thumbnailContainer, children: jsxRuntime.jsx(ThumbnailGrid, { streams: streams, activeStreamIndex: activeStreamIndex, onStreamSelect: handleStreamChange, onFullscreen: toggleFullscreen, layout: streamCount === 2 ? 'horizontal' : 'vertical', maxVisible: maxThumbnails }) }))] })] }) }), enableFullscreen && (jsxRuntime.jsx(FullscreenModal, { isOpen: isFullscreen, stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, onClose: () => toggleFullscreen(), onError: handleError }))] }));
+    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), bodyStyle: { padding: 16, height: '100%' }, children: jsxRuntime.jsxs("div", { className: "flex flex-col h-full", children: [jsxRuntime.jsx("div", { className: "mb-4 flex-shrink-0", children: jsxRuntime.jsxs("div", { className: "flex items-center justify-between", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text$1, { strong: true, className: "text-base block", children: title }), jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-sm", children: subtitle })] }), enableKeyboardControls && (jsxRuntime.jsx("div", { className: "text-xs text-gray-400", children: jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-xs", children: "Keyboard: Space (play/pause), M (mute), F (fullscreen), \u2190\u2192 (switch)" }) }))] }) }), jsxRuntime.jsxs("div", { className: layoutClasses.container, children: [jsxRuntime.jsx("div", { className: layoutClasses.mainVideo, children: jsxRuntime.jsx(MainVideoPlayer, { stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, error: error, showControls: controls, streamCount: streamCount, onPlayPause: togglePlayPause, onMuteUnmute: toggleMute, onFullscreen: toggleFullscreen, onRetry: handleRetry, onError: handleError }) }), showThumbnails && streamCount > 1 && (jsxRuntime.jsx("div", { className: layoutClasses.thumbnailContainer, children: jsxRuntime.jsx(ThumbnailGrid, { streams: streams, activeStreamIndex: activeStreamIndex, onStreamSelect: handleStreamChange, onFullscreen: toggleFullscreen, layout: streamCount === 2 ? 'horizontal' : 'vertical', maxVisible: maxThumbnails }) }))] })] }) }), enableFullscreen && (jsxRuntime.jsx(FullscreenModal, { isOpen: isFullscreen, stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, onClose: () => toggleFullscreen(), onError: handleError }))] }));
+};
+
+// Zone colors for different types
+const ZONE_COLORS = {
+    default: '#6b7280' // gray
+};
+const PolygonEditor = ({ width, height, zones, onZonesChange, isDrawing = false, onDrawingChange, selectedZoneId = null, onZoneSelect, readonly = false, showGrid = false, gridSize = 20, snapToGrid = false, className }) => {
+    const [currentPoints, setCurrentPoints] = React.useState([]);
+    const [hoveredPointIndex, setHoveredPointIndex] = React.useState(null);
+    const [draggedPointIndex, setDraggedPointIndex] = React.useState(null);
+    const stageRef = React.useRef(null);
+    // Snap point to grid if enabled
+    const snapPoint = React.useCallback((point) => {
+        if (!snapToGrid)
+            return point;
+        return {
+            x: Math.round(point.x / gridSize) * gridSize,
+            y: Math.round(point.y / gridSize) * gridSize
+        };
+    }, [snapToGrid, gridSize]);
+    // Get relative position from stage
+    const getRelativePointerPosition = React.useCallback(() => {
+        const stage = stageRef.current;
+        if (!stage)
+            return null;
+        const transform = stage.getAbsoluteTransform().copy();
+        transform.invert();
+        const pos = stage.getPointerPosition();
+        if (!pos)
+            return null;
+        return transform.point(pos);
+    }, []);
+    // Handle stage click for drawing
+    const handleStageClick = React.useCallback((e) => {
+        if (readonly)
+            return;
+        // Deselect if clicking on empty space
+        if (e.target === e.target.getStage()) {
+            onZoneSelect?.(null);
+        }
+        if (!isDrawing)
+            return;
+        const pos = getRelativePointerPosition();
+        if (!pos)
+            return;
+        const snappedPos = snapPoint(pos);
+        // Check if clicking near the first point to close polygon
+        if (currentPoints.length >= 3) {
+            const firstPoint = currentPoints[0];
+            const distance = Math.sqrt(Math.pow(snappedPos.x - firstPoint.x, 2) +
+                Math.pow(snappedPos.y - firstPoint.y, 2));
+            if (distance < 20) {
+                // Close the polygon
+                const newZone = {
+                    id: `zone_${Date.now()}`,
+                    name: `Zone ${zones.length + 1}`,
+                    points: [...currentPoints],
+                    color: ZONE_COLORS.default,
+                    opacity: 0, // Start with transparent fill (borders only)
+                    strokeWidth: 2,
+                    metadata: {
+                        type: 'monitoring',
+                        description: '',
+                        createdAt: new Date().toISOString()
+                    }
+                };
+                onZonesChange([...zones, newZone]);
+                setCurrentPoints([]);
+                onDrawingChange?.(false);
+                onZoneSelect?.(newZone.id);
+                return;
+            }
+        }
+        setCurrentPoints(prev => [...prev, snappedPos]);
+    }, [readonly, isDrawing, currentPoints, zones, onZonesChange, onDrawingChange, onZoneSelect, snapPoint, getRelativePointerPosition]);
+    // Handle point drag
+    const handlePointDrag = React.useCallback((zoneId, pointIndex, newPos) => {
+        if (readonly)
+            return;
+        const snappedPos = snapPoint(newPos);
+        const updatedZones = zones.map(zone => {
+            if (zone.id === zoneId) {
+                const newPoints = [...zone.points];
+                newPoints[pointIndex] = snappedPos;
+                return { ...zone, points: newPoints };
+            }
+            return zone;
+        });
+        onZonesChange(updatedZones);
+    }, [readonly, zones, onZonesChange, snapPoint]);
+    // Handle zone click
+    const handleZoneClick = React.useCallback((zoneId) => {
+        onZoneSelect?.(zoneId);
+    }, [onZoneSelect]);
+    // Handle keyboard events
+    React.useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (readonly)
+                return;
+            if (e.key === 'Escape') {
+                if (isDrawing) {
+                    setCurrentPoints([]);
+                    onDrawingChange?.(false);
+                }
+                else {
+                    onZoneSelect?.(null);
+                }
+            }
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (selectedZoneId) {
+                    const updatedZones = zones.filter(zone => zone.id !== selectedZoneId);
+                    onZonesChange(updatedZones);
+                    onZoneSelect?.(null);
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [readonly, isDrawing, selectedZoneId, zones, onZonesChange, onZoneSelect, onDrawingChange]);
+    // Render grid
+    const renderGrid = () => {
+        if (!showGrid)
+            return null;
+        const lines = [];
+        // Vertical lines
+        for (let i = 0; i <= width; i += gridSize) {
+            lines.push(jsxRuntime.jsx(reactKonva.Line, { points: [i, 0, i, height], stroke: "#e5e7eb", strokeWidth: 0.5, opacity: 0.5 }, `v-${i}`));
+        }
+        // Horizontal lines
+        for (let i = 0; i <= height; i += gridSize) {
+            lines.push(jsxRuntime.jsx(reactKonva.Line, { points: [0, i, width, i], stroke: "#e5e7eb", strokeWidth: 0.5, opacity: 0.5 }, `h-${i}`));
+        }
+        return lines;
+    };
+    // Render zone polygon
+    const renderZone = (zone) => {
+        const isSelected = zone.id === selectedZoneId;
+        const flatPoints = zone.points.flatMap(p => [p.x, p.y]);
+        return (jsxRuntime.jsxs(React.Fragment, { children: [jsxRuntime.jsx(reactKonva.Line, { points: flatPoints, closed: true, fill: zone.color, opacity: zone.opacity || 0.3, stroke: zone.color, strokeWidth: isSelected ? (zone.strokeWidth || 2) + 2 : (zone.strokeWidth || 2), onClick: () => handleZoneClick(zone.id), onTap: () => handleZoneClick(zone.id) }), isSelected && !readonly && zone.points.map((point, index) => (jsxRuntime.jsx(reactKonva.Circle, { x: point.x, y: point.y, radius: hoveredPointIndex === index ? 8 : 6, fill: zone.color, stroke: "#ffffff", strokeWidth: 2, draggable: true, onMouseEnter: () => setHoveredPointIndex(index), onMouseLeave: () => setHoveredPointIndex(null), onDragStart: () => setDraggedPointIndex(index), onDragEnd: () => setDraggedPointIndex(null), onDragMove: (e) => {
+                        const newPos = { x: e.target.x(), y: e.target.y() };
+                        handlePointDrag(zone.id, index, newPos);
+                    } }, `${zone.id}-point-${index}`)))] }, zone.id));
+    };
+    // Render current drawing polygon
+    const renderCurrentPolygon = () => {
+        if (currentPoints.length === 0)
+            return null;
+        const flatPoints = currentPoints.flatMap(p => [p.x, p.y]);
+        return (jsxRuntime.jsxs(React.Fragment, { children: [jsxRuntime.jsx(reactKonva.Line, { points: flatPoints, stroke: ZONE_COLORS.default, strokeWidth: 2, dash: [5, 5] }), currentPoints.map((point, index) => (jsxRuntime.jsx(reactKonva.Circle, { x: point.x, y: point.y, radius: 4, fill: ZONE_COLORS.default, stroke: "#ffffff", strokeWidth: 1 }, `current-${index}`))), currentPoints.length >= 3 && (jsxRuntime.jsx(reactKonva.Circle, { x: currentPoints[0].x, y: currentPoints[0].y, radius: 8, stroke: ZONE_COLORS.default, strokeWidth: 3, fill: "transparent" }))] }));
+    };
+    return (jsxRuntime.jsxs("div", { className: cn('relative', className), children: [jsxRuntime.jsx(reactKonva.Stage, { ref: stageRef, width: width, height: height, onClick: handleStageClick, onTap: handleStageClick, children: jsxRuntime.jsxs(reactKonva.Layer, { children: [jsxRuntime.jsx(reactKonva.Rect, { width: width, height: height, fill: "transparent" }), renderGrid(), zones.map(renderZone), renderCurrentPolygon()] }) }), isDrawing && (jsxRuntime.jsx("div", { className: "absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded", children: "Click to add points. Click first point or press Escape to finish." })), selectedZoneId && (jsxRuntime.jsxs("div", { className: "absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded", children: [zones.find(z => z.id === selectedZoneId)?.name, " selected (Delete to remove)"] }))] }));
+};
+
+const { Text } = antd.Typography;
+const { Option } = antd.Select;
+const ZONE_TYPES = [
+    { value: 'restricted', label: 'Restricted Area', color: '#ef4444' },
+    { value: 'monitoring', label: 'Monitoring Zone', color: '#3b82f6' },
+    { value: 'alert', label: 'Alert Zone', color: '#f59e0b' },
+    { value: 'safe', label: 'Safe Zone', color: '#10b981' }
+];
+const ZoneControls = ({ zones, selectedZoneId, onZoneSelect, onZoneAdd, onZoneDelete, onZoneUpdate, onZoneDuplicate, isDrawing, onDrawingToggle, readonly = false }) => {
+    const [editingZone, setEditingZone] = React.useState(null);
+    const [editForm, setEditForm] = React.useState({});
+    const selectedZone = zones.find(zone => zone.id === selectedZoneId);
+    const handleEditStart = (zone) => {
+        setEditingZone(zone.id);
+        setEditForm({
+            name: zone.name,
+            color: zone.color,
+            metadata: { ...zone.metadata }
+        });
+    };
+    const handleEditSave = () => {
+        if (editingZone && editForm) {
+            onZoneUpdate(editingZone, editForm);
+            setEditingZone(null);
+            setEditForm({});
+        }
+    };
+    const handleEditCancel = () => {
+        setEditingZone(null);
+        setEditForm({});
+    };
+    const handleColorChange = (color) => {
+        const hexColor = typeof color === 'string' ? color : color.toHexString();
+        setEditForm(prev => ({ ...prev, color: hexColor }));
+    };
+    const handleVisibilityToggle = (zoneId, visible) => {
+        onZoneUpdate(zoneId, { opacity: visible ? 0.3 : 0 });
+    };
+    return (jsxRuntime.jsx(antd.Card, { title: "Zone Management", size: "small", className: "w-80", extra: !readonly && (jsxRuntime.jsx(antd.Space, { children: jsxRuntime.jsx(antd.Button, { type: isDrawing ? "primary" : "default", icon: jsxRuntime.jsx(icons.PlusOutlined, {}), size: "small", onClick: onDrawingToggle, disabled: readonly, children: isDrawing ? 'Cancel' : 'Add Zone' }) })), children: jsxRuntime.jsxs("div", { className: "space-y-4", children: [jsxRuntime.jsx(antd.List, { size: "small", dataSource: zones, renderItem: (zone) => (jsxRuntime.jsx(antd.List.Item, { className: `cursor-pointer rounded p-2 transition-colors ${selectedZoneId === zone.id ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}`, onClick: () => onZoneSelect(zone.id), actions: !readonly ? [
+                            jsxRuntime.jsx(antd.Button, { type: "text", size: "small", icon: zone.opacity === 0 ? jsxRuntime.jsx(icons.EyeInvisibleOutlined, {}) : jsxRuntime.jsx(icons.EyeOutlined, {}), onClick: (e) => {
+                                    e.stopPropagation();
+                                    handleVisibilityToggle(zone.id, zone.opacity === 0);
+                                } }, "visibility"),
+                            jsxRuntime.jsx(antd.Button, { type: "text", size: "small", icon: jsxRuntime.jsx(icons.EditOutlined, {}), onClick: (e) => {
+                                    e.stopPropagation();
+                                    handleEditStart(zone);
+                                } }, "edit"),
+                            onZoneDuplicate && (jsxRuntime.jsx(antd.Button, { type: "text", size: "small", icon: jsxRuntime.jsx(icons.CopyOutlined, {}), onClick: (e) => {
+                                    e.stopPropagation();
+                                    onZoneDuplicate(zone.id);
+                                } }, "duplicate")),
+                            jsxRuntime.jsx(antd.Button, { type: "text", size: "small", danger: true, icon: jsxRuntime.jsx(icons.DeleteOutlined, {}), onClick: (e) => {
+                                    e.stopPropagation();
+                                    onZoneDelete(zone.id);
+                                } }, "delete")
+                        ].filter(Boolean) : [], children: jsxRuntime.jsx(antd.List.Item.Meta, { title: jsxRuntime.jsxs(antd.Space, { children: [jsxRuntime.jsx("div", { className: "w-3 h-3 rounded-full border", style: { backgroundColor: zone.color } }), jsxRuntime.jsx(Text, { children: zone.name })] }), description: jsxRuntime.jsxs(Text, { type: "secondary", className: "text-xs", children: [zone.metadata?.type || 'monitoring', " \u2022 ", zone.points.length, " points"] }) }) })), locale: { emptyText: 'No zones created' } }), selectedZone && (jsxRuntime.jsx(antd.Card, { size: "small", title: "Zone Details", children: editingZone === selectedZone.id ? (jsxRuntime.jsxs("div", { className: "space-y-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { className: "text-xs text-gray-500", children: "Name" }), jsxRuntime.jsx(antd.Input, { size: "small", value: editForm.name, onChange: (e) => setEditForm(prev => ({ ...prev, name: e.target.value })), placeholder: "Zone name" })] }), jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { className: "text-xs text-gray-500", children: "Type" }), jsxRuntime.jsx(antd.Select, { size: "small", className: "w-full", value: editForm.metadata?.type, onChange: (value) => setEditForm(prev => ({
+                                            ...prev,
+                                            metadata: { ...prev.metadata, type: value }
+                                        })), children: ZONE_TYPES.map(type => (jsxRuntime.jsx(Option, { value: type.value, children: jsxRuntime.jsxs(antd.Space, { children: [jsxRuntime.jsx("div", { className: "w-3 h-3 rounded-full", style: { backgroundColor: type.color } }), type.label] }) }, type.value))) })] }), jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { className: "text-xs text-gray-500", children: "Color" }), jsxRuntime.jsx(antd.ColorPicker, { size: "small", value: editForm.color, onChange: handleColorChange, showText: true })] }), jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { className: "text-xs text-gray-500", children: "Description" }), jsxRuntime.jsx(antd.Input.TextArea, { size: "small", rows: 2, value: editForm.metadata?.description, onChange: (e) => setEditForm(prev => ({
+                                            ...prev,
+                                            metadata: { ...prev.metadata, description: e.target.value }
+                                        })), placeholder: "Zone description" })] }), jsxRuntime.jsxs(antd.Space, { children: [jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleEditSave, children: "Save" }), jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleEditCancel, children: "Cancel" })] })] })) : (jsxRuntime.jsxs("div", { className: "space-y-2", children: [jsxRuntime.jsxs(antd.Row, { children: [jsxRuntime.jsx(antd.Col, { span: 8, children: jsxRuntime.jsx(Text, { className: "text-xs text-gray-500", children: "Name:" }) }), jsxRuntime.jsx(antd.Col, { span: 16, children: jsxRuntime.jsx(Text, { className: "text-xs", children: selectedZone.name }) })] }), jsxRuntime.jsxs(antd.Row, { children: [jsxRuntime.jsx(antd.Col, { span: 8, children: jsxRuntime.jsx(Text, { className: "text-xs text-gray-500", children: "Type:" }) }), jsxRuntime.jsx(antd.Col, { span: 16, children: jsxRuntime.jsxs(antd.Space, { children: [jsxRuntime.jsx("div", { className: "w-3 h-3 rounded-full", style: { backgroundColor: selectedZone.color } }), jsxRuntime.jsx(Text, { className: "text-xs", children: ZONE_TYPES.find(t => t.value === selectedZone.metadata?.type)?.label || 'Monitoring Zone' })] }) })] }), jsxRuntime.jsxs(antd.Row, { children: [jsxRuntime.jsx(antd.Col, { span: 8, children: jsxRuntime.jsx(Text, { className: "text-xs text-gray-500", children: "Points:" }) }), jsxRuntime.jsx(antd.Col, { span: 16, children: jsxRuntime.jsx(Text, { className: "text-xs", children: selectedZone.points.length }) })] }), selectedZone.metadata?.description && (jsxRuntime.jsxs(antd.Row, { children: [jsxRuntime.jsx(antd.Col, { span: 8, children: jsxRuntime.jsx(Text, { className: "text-xs text-gray-500", children: "Description:" }) }), jsxRuntime.jsx(antd.Col, { span: 16, children: jsxRuntime.jsx(Text, { className: "text-xs", children: selectedZone.metadata.description }) })] }))] })) })), jsxRuntime.jsx(antd.Card, { size: "small", title: "Instructions", children: jsxRuntime.jsxs("div", { className: "text-xs text-gray-600 space-y-1", children: [jsxRuntime.jsx("div", { children: "\u2022 Click \"Add Zone\" to start drawing" }), jsxRuntime.jsx("div", { children: "\u2022 Click to add points, click first point to close" }), jsxRuntime.jsx("div", { children: "\u2022 Click zone to select, drag points to modify" }), jsxRuntime.jsx("div", { children: "\u2022 Press Delete to remove selected zone" }), jsxRuntime.jsx("div", { children: "\u2022 Press Escape to cancel drawing" })] }) })] }) }));
+};
+
+const VideoPolygonOverlay = ({ videoElement, zones: initialZones = [], onZonesChange, width, height, readonly = false, showControls = true, className }) => {
+    const [zones, setZones] = React.useState(initialZones);
+    const [isDrawing, setIsDrawing] = React.useState(false);
+    const [selectedZoneId, setSelectedZoneId] = React.useState(null);
+    const containerRef = React.useRef(null);
+    // Update local zones when prop changes
+    React.useEffect(() => {
+        setZones(initialZones);
+    }, [initialZones]);
+    // Handle zones change
+    const handleZonesChange = React.useCallback((newZones) => {
+        setZones(newZones);
+        onZonesChange?.(newZones);
+    }, [onZonesChange]);
+    // Handle zone add
+    const handleZoneAdd = React.useCallback(() => {
+        setIsDrawing(true);
+        setSelectedZoneId(null);
+    }, []);
+    // Handle zone delete
+    const handleZoneDelete = React.useCallback((zoneId) => {
+        const newZones = zones.filter(zone => zone.id !== zoneId);
+        handleZonesChange(newZones);
+        if (selectedZoneId === zoneId) {
+            setSelectedZoneId(null);
+        }
+    }, [zones, selectedZoneId, handleZonesChange]);
+    // Handle zone update
+    const handleZoneUpdate = React.useCallback((zoneId, updates) => {
+        const newZones = zones.map(zone => zone.id === zoneId
+            ? { ...zone, ...updates, metadata: { ...zone.metadata, ...updates.metadata } }
+            : zone);
+        handleZonesChange(newZones);
+    }, [zones, handleZonesChange]);
+    // Handle zone duplicate
+    const handleZoneDuplicate = React.useCallback((zoneId) => {
+        const zoneToClone = zones.find(zone => zone.id === zoneId);
+        if (!zoneToClone)
+            return;
+        const clonedZone = {
+            ...zoneToClone,
+            id: `zone_${Date.now()}`,
+            name: `${zoneToClone.name} (Copy)`,
+            points: zoneToClone.points.map(point => ({ x: point.x + 20, y: point.y + 20 })), // Offset copy
+            metadata: {
+                ...zoneToClone.metadata,
+                createdAt: new Date().toISOString()
+            }
+        };
+        const newZones = [...zones, clonedZone];
+        handleZonesChange(newZones);
+        setSelectedZoneId(clonedZone.id);
+    }, [zones, handleZonesChange]);
+    // Handle drawing toggle
+    const handleDrawingToggle = React.useCallback(() => {
+        setIsDrawing(!isDrawing);
+        if (isDrawing) {
+            setSelectedZoneId(null);
+        }
+    }, [isDrawing]);
+    return (jsxRuntime.jsxs("div", { className: cn('relative flex', className), ref: containerRef, children: [jsxRuntime.jsx("div", { className: "flex-1 relative", children: jsxRuntime.jsx(PolygonEditor, { width: width, height: height, zones: zones, onZonesChange: handleZonesChange, isDrawing: isDrawing, onDrawingChange: setIsDrawing, selectedZoneId: selectedZoneId, onZoneSelect: setSelectedZoneId, readonly: readonly, showGrid: !videoElement, gridSize: 20, snapToGrid: false, className: "border border-gray-300 rounded-lg overflow-hidden" }) }), showControls && (jsxRuntime.jsx("div", { className: "ml-4 flex-shrink-0", children: jsxRuntime.jsx(ZoneControls, { zones: zones, selectedZoneId: selectedZoneId, onZoneSelect: setSelectedZoneId, onZoneAdd: handleZoneAdd, onZoneDelete: handleZoneDelete, onZoneUpdate: handleZoneUpdate, onZoneDuplicate: handleZoneDuplicate, isDrawing: isDrawing, onDrawingToggle: handleDrawingToggle, readonly: readonly }) }))] }));
 };
 
 const defaultTheme = {
@@ -551,12 +830,15 @@ Object.defineProperty(exports, "Typography", {
 exports.FullscreenModal = FullscreenModal;
 exports.LiveFeedPlayer = LiveFeedPlayer;
 exports.MainVideoPlayer = MainVideoPlayer;
+exports.PolygonEditor = PolygonEditor;
 exports.ProgressBar = ProgressBar;
 exports.SafeSpaceThemeProvider = SafeSpaceThemeProvider;
 exports.StreamInfo = StreamInfo;
 exports.ThumbnailGrid = ThumbnailGrid;
 exports.VideoControls = VideoControls;
 exports.VideoPlayer = VideoPlayer;
+exports.VideoPolygonOverlay = VideoPolygonOverlay;
+exports.ZoneControls = ZoneControls;
 exports.cn = cn;
 exports.useSafeSpaceTheme = useSafeSpaceTheme;
 exports.useStreamLayout = useStreamLayout;
