@@ -31,7 +31,7 @@ export const ThumbnailGrid: React.FC<ThumbnailGridProps> = ({
         >
           <VideoPlayer
             stream={inactiveStream}
-            autoPlay={false}
+            autoPlay={true}
             muted={true}
             controls={false}
             showOverlay={true}
@@ -81,7 +81,7 @@ export const ThumbnailGrid: React.FC<ThumbnailGridProps> = ({
             >
               <VideoPlayer
                 stream={stream}
-                autoPlay={false}
+                autoPlay={true}
                 muted={true}
                 controls={false}
                 showOverlay={true}

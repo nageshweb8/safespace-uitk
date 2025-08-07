@@ -3,9 +3,9 @@ import { Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { CameraStream } from '../../types/video';
 import { VideoPlayer } from '../VideoPlayer';
-import { VideoControls } from '../shared/VideoControls';
-import { StreamInfo } from '../shared/StreamInfo';
-import { ProgressBar } from '../shared/ProgressBar';
+import { VideoControls } from './VideoControls';
+import { StreamInfo } from './StreamInfo';
+import { ProgressBar } from './ProgressBar';
 import { cn } from '../../utils/cn';
 
 export interface MainVideoPlayerProps {
@@ -38,7 +38,7 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
   className
 }) => {
   return (
-    <div className={cn('relative w-full h-full overflow-hidden rounded-lg bg-black', className)}>
+    <div className={cn('relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black', className)} style={{ aspectRatio: '16/9' }}>
       {error ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
           <div className="text-center">

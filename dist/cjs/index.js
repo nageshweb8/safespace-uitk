@@ -1,12 +1,103 @@
 'use strict';
 
 var jsxRuntime = require('react/jsx-runtime');
-var react = require('react');
+var React = require('react');
 var antd = require('antd');
 var icons = require('@ant-design/icons');
 var Hls = require('hls.js');
 var clsx = require('clsx');
 var tailwindMerge = require('tailwind-merge');
+
+function useVideoPlayer(streams, initialAutoPlay = true, initialMuted = true, onStreamChange, onError) {
+    const [activeStreamIndex, setActiveStreamIndex] = React.useState(0);
+    const [isPlaying, setIsPlaying] = React.useState(initialAutoPlay);
+    const [isMuted, setIsMuted] = React.useState(initialMuted);
+    const [isFullscreen, setIsFullscreen] = React.useState(false);
+    const [error, setErrorState] = React.useState(null);
+    const [isLoading, setIsLoading] = React.useState(false);
+    const togglePlayPause = React.useCallback(() => {
+        setIsPlaying(prev => !prev);
+    }, []);
+    const toggleMute = React.useCallback(() => {
+        setIsMuted(prev => !prev);
+    }, []);
+    const toggleFullscreen = React.useCallback(() => {
+        setIsFullscreen(prev => !prev);
+    }, []);
+    const clearError = React.useCallback(() => {
+        setErrorState(null);
+    }, []);
+    const setError = React.useCallback((error) => {
+        setErrorState(error);
+    }, []);
+    const setLoading = React.useCallback((loading) => {
+        setIsLoading(loading);
+    }, []);
+    const handleStreamChange = React.useCallback((streamIndex) => {
+        if (streamIndex >= 0 && streamIndex < streams.length) {
+            setActiveStreamIndex(streamIndex);
+            setErrorState(null);
+            onStreamChange?.(streams[streamIndex]);
+        }
+    }, [streams, onStreamChange]);
+    const handleError = React.useCallback((error, stream) => {
+        const errorMessage = error.message;
+        setErrorState(errorMessage);
+        onError?.(error, stream || streams[activeStreamIndex]);
+    }, [streams, activeStreamIndex, onError]);
+    const handleRetry = React.useCallback(() => {
+        setErrorState(null);
+        setIsLoading(true);
+        // Force re-render by updating the active stream index
+        setActiveStreamIndex(prev => prev);
+    }, []);
+    return {
+        // State
+        activeStreamIndex,
+        isPlaying,
+        isMuted,
+        isFullscreen,
+        error,
+        isLoading,
+        // Actions
+        setActiveStreamIndex,
+        togglePlayPause,
+        toggleMute,
+        toggleFullscreen,
+        clearError,
+        setError,
+        setLoading,
+        handleStreamChange,
+        handleError,
+        handleRetry,
+    };
+}
+
+function useStreamLayout(streamCount) {
+    return React.useMemo(() => {
+        if (streamCount === 1) {
+            return {
+                container: 'grid grid-cols-1 gap-4 h-full',
+                mainVideo: 'w-full h-full',
+                thumbnailContainer: 'hidden'
+            };
+        }
+        else if (streamCount === 2) {
+            return {
+                container: 'grid grid-cols-2 gap-4 h-full',
+                mainVideo: 'w-full h-full',
+                thumbnailContainer: 'w-full h-full'
+            };
+        }
+        else {
+            return {
+                container: 'grid grid-cols-4 gap-4 h-full',
+                mainVideo: 'col-span-3 w-full h-full',
+                thumbnailContainer: 'col-span-1 w-full h-full'
+            };
+        }
+    }, [streamCount]);
+}
 
 /**
  * Utility function to combine Tailwind CSS classes with proper conflict resolution
@@ -18,9 +109,9 @@ function cn(...inputs) {
 }
 
 const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, className, onError, onLoadStart, onLoadEnd, showOverlay = false }) => {
-    const videoRef = react.useRef(null);
-    const hlsRef = react.useRef(null);
-    react.useEffect(() => {
+    const videoRef = React.useRef(null);
+    const hlsRef = React.useRef(null);
+    React.useEffect(() => {
         const video = videoRef.current;
         if (!video || !stream.url)
             return;
@@ -139,6 +230,10 @@ const ProgressBar = ({ progress, className, size = 'medium', color = 'white' }) 
     return (jsxRuntime.jsx("div", { className: cn('absolute bottom-0 left-0 right-0 px-2 pb-1', className), children: jsxRuntime.jsx("div", { className: cn('w-full rounded', sizeClasses[size], backgroundClasses[color]), children: jsxRuntime.jsx("div", { className: cn('h-full rounded transition-all duration-300', colorClasses[color]), style: { width: `${Math.min(Math.max(progress, 0), 100)}%` } }) }) }));
 };
 
+const MainVideoPlayer = ({ stream, isPlaying, isMuted, error, showControls, streamCount, onPlayPause, onMuteUnmute, onFullscreen, onRetry, onError, className }) => {
+    return (jsxRuntime.jsx("div", { className: cn('relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black', className), style: { aspectRatio: '16/9' }, children: error ? (jsxRuntime.jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsxRuntime.jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: error }), jsxRuntime.jsx(antd.Button, { type: "primary", icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), onClick: onRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: false, onError: onError }, `${stream.id}-${Date.now()}`), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onPlayPause, onMuteUnmute: onMuteUnmute, onFullscreen: onFullscreen, showControls: showControls && streamCount > 2, size: "medium" }), streamCount > 2 && (jsxRuntime.jsx(ProgressBar, { progress: 65, size: "medium", color: "white", className: "px-3 pb-2" }))] })) }));
+};
+
 const { Text: Text$1 } = antd.Typography;
 const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscreen, layout, maxVisible = 3 }) => {
     const streamCount = streams.length;
@@ -146,7 +241,7 @@ const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscree
         // 50:50 layout for 2 videos
         const inactiveStream = streams[activeStreamIndex === 0 ? 1 : 0];
         const inactiveIndex = activeStreamIndex === 0 ? 1 : 0;
-        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "relative w-full h-full overflow-hidden rounded-lg bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all", onClick: () => onStreamSelect(inactiveIndex), children: [jsxRuntime.jsx(VideoPlayer, { stream: inactiveStream, autoPlay: false, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: inactiveStream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: true, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 45 + (inactiveIndex * 10), size: "small", color: "white" })] }) }));
+        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "relative w-full h-full overflow-hidden rounded-lg bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all", onClick: () => onStreamSelect(inactiveIndex), children: [jsxRuntime.jsx(VideoPlayer, { stream: inactiveStream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: inactiveStream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: true, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 45 + (inactiveIndex * 10), size: "small", color: "white" })] }) }));
     }
     if (streamCount >= 3 && layout === 'vertical') {
         // Thumbnail grid layout for 3+ videos (25% width area)
@@ -154,65 +249,77 @@ const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscree
             .map((stream, index) => ({ stream, index }))
             .filter(({ index }) => index !== activeStreamIndex)
             .slice(0, maxVisible);
-        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "flex flex-col gap-2 h-full", children: [thumbnailStreams.map(({ stream, index }) => (jsxRuntime.jsxs("div", { className: "relative overflow-hidden rounded-md bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all flex-1 min-h-0", onClick: () => onStreamSelect(index), children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: false, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true, className: "text-[10px] px-1 py-0.5" }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: false, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 30 + (index * 10), size: "small", color: "white", className: "px-1 pb-0.5" })] }, stream.id))), streams.length > maxVisible + 1 && (jsxRuntime.jsx("div", { className: "text-center py-1", children: jsxRuntime.jsxs(Text$1, { className: "text-xs text-gray-500", children: ["+", streams.length - maxVisible - 1, " more"] }) }))] }) }));
+        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "flex flex-col gap-2 h-full", children: [thumbnailStreams.map(({ stream, index }) => (jsxRuntime.jsxs("div", { className: "relative overflow-hidden rounded-md bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all flex-1 min-h-0", onClick: () => onStreamSelect(index), children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true, className: "text-[10px] px-1 py-0.5" }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: false, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 30 + (index * 10), size: "small", color: "white", className: "px-1 pb-0.5" })] }, stream.id))), streams.length > maxVisible + 1 && (jsxRuntime.jsx("div", { className: "text-center py-1", children: jsxRuntime.jsxs(Text$1, { className: "text-xs text-gray-500", children: ["+", streams.length - maxVisible - 1, " more"] }) }))] }) }));
     }
     return null;
 };
 
+const FullscreenModal = ({ isOpen, stream, isPlaying, isMuted, onClose, onError }) => {
+    return (jsxRuntime.jsx(antd.Modal, { open: isOpen, onCancel: onClose, footer: null, width: "90vw", centered: true, closable: false, bodyStyle: { padding: 0, height: '90vh' }, className: "fullscreen-modal", destroyOnClose: true, children: jsxRuntime.jsxs("div", { className: "relative h-full bg-black", children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: true, className: "h-full", onError: onError }, `modal-${stream.id}`), jsxRuntime.jsx(antd.Button, { type: "text", size: "large", icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}), onClick: onClose, className: "absolute top-4 right-4 text-white hover:text-gray-300 z-10", title: "Close Fullscreen" }), jsxRuntime.jsxs("div", { className: "absolute top-4 left-4 bg-black/70 text-white px-4 py-2 rounded", children: [jsxRuntime.jsx("div", { className: "text-lg font-medium", children: stream.title }), stream.metadata && (jsxRuntime.jsxs("div", { className: "text-sm opacity-75", children: [stream.metadata.resolution, " \u2022 ", stream.metadata.fps, "fps", stream.metadata.bitrate && ` • ${stream.metadata.bitrate}`] }))] })] }) }));
+};
+
 const { Text } = antd.Typography;
-const getLayoutClasses = (streamCount) => {
-    if (streamCount === 1) {
-        return {
-            container: 'grid grid-cols-1 gap-4 h-full',
-            mainVideo: 'w-full h-full',
-            thumbnailContainer: 'hidden'
-        };
-    }
-    else if (streamCount === 2) {
-        return {
-            container: 'grid grid-cols-2 gap-4 h-full',
-            mainVideo: 'w-full h-full',
-            thumbnailContainer: 'w-full h-full'
-        };
-    }
-    else {
-        return {
-            container: 'grid grid-cols-4 gap-4 h-full',
-            mainVideo: 'col-span-3 w-full h-full',
-            thumbnailContainer: 'col-span-1 w-full h-full'
-        };
-    }
-};
-const themeClasses = {
-    light: 'bg-white border-gray-200',
-    dark: 'bg-gray-900 border-gray-700'
-};
-const LiveFeedPlayer = ({ streams, className, autoPlay = true, muted = true, showThumbnails = true, onStreamChange, onError, theme = 'light', title = 'Live Feed', subtitle = 'All pinned cameras will be displayed here' }) => {
-    const [activeStreamIndex, setActiveStreamIndex] = react.useState(0);
-    const [isModalOpen, setIsModalOpen] = react.useState(false);
-    const [isPlaying] = react.useState(autoPlay);
-    const [isMuted] = react.useState(muted);
-    const [error, setError] = react.useState(null);
-    const activeStream = streams[activeStreamIndex];
+const LiveFeedPlayer = ({ streams, className, autoPlay = true, muted = true, controls = true, showThumbnails = true, onStreamChange, onError, theme = 'light', title = 'Live Feed', subtitle = 'All pinned cameras will be displayed here', maxThumbnails = 3, enableFullscreen = true, enableKeyboardControls = true }) => {
+    const { activeStreamIndex, isPlaying, isMuted, isFullscreen, error, togglePlayPause, toggleMute, toggleFullscreen, handleStreamChange, handleError, handleRetry, } = useVideoPlayer(streams, autoPlay, muted, onStreamChange, onError);
+    const layoutClasses = useStreamLayout(streams.length);
     const streamCount = streams.length;
-    const layoutClasses = getLayoutClasses(streamCount);
-    const handleStreamChange = react.useCallback((streamIndex) => {
-        setActiveStreamIndex(streamIndex);
-        setError(null);
-        onStreamChange?.(streams[streamIndex]);
-    }, [onStreamChange, streams]);
-    const handleError = react.useCallback((error, stream) => {
-        setError(error.message);
-        onError?.(error, stream || activeStream);
-    }, [onError, activeStream]);
-    const handleRetry = react.useCallback(() => {
-        setError(null);
-        setActiveStreamIndex(prev => prev);
-    }, []);
+    const activeStream = streams[activeStreamIndex];
+    const themeClasses = {
+        light: 'bg-white border-gray-200',
+        dark: 'bg-gray-900 border-gray-700'
+    };
+    // Keyboard controls
+    React.useEffect(() => {
+        if (!enableKeyboardControls)
+            return;
+        const handleKeyPress = (event) => {
+            switch (event.key) {
+                case ' ':
+                    event.preventDefault();
+                    togglePlayPause();
+                    break;
+                case 'm':
+                case 'M':
+                    event.preventDefault();
+                    toggleMute();
+                    break;
+                case 'f':
+                case 'F':
+                    event.preventDefault();
+                    if (enableFullscreen) {
+                        toggleFullscreen();
+                    }
+                    break;
+                case 'ArrowRight':
+                    event.preventDefault();
+                    if (activeStreamIndex < streams.length - 1) {
+                        handleStreamChange(activeStreamIndex + 1);
+                    }
+                    break;
+                case 'ArrowLeft':
+                    event.preventDefault();
+                    if (activeStreamIndex > 0) {
+                        handleStreamChange(activeStreamIndex - 1);
+                    }
+                    break;
+            }
+        };
+        document.addEventListener('keydown', handleKeyPress);
+        return () => document.removeEventListener('keydown', handleKeyPress);
+    }, [
+        enableKeyboardControls,
+        togglePlayPause,
+        toggleMute,
+        toggleFullscreen,
+        enableFullscreen,
+        activeStreamIndex,
+        streams.length,
+        handleStreamChange
+    ]);
     if (!streams.length) {
-        return (jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), children: jsxRuntime.jsx("div", { className: "flex items-center justify-center h-64", children: jsxRuntime.jsx(Text, { type: "secondary", children: "No camera streams available" }) }) }));
+        return (jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), children: jsxRuntime.jsx("div", { className: "flex items-center justify-center h-64", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-4xl mb-4", children: "\uD83D\uDCF9" }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-lg", children: "No camera streams available" }), jsxRuntime.jsx("br", {}), jsxRuntime.jsx(Text, { type: "secondary", className: "text-sm", children: "Please add camera streams to view live feeds" })] }) }) }));
     }
-    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), bodyStyle: { padding: 16, height: '100%' }, children: jsxRuntime.jsxs("div", { className: "flex flex-col h-full", children: [jsxRuntime.jsxs("div", { className: "mb-4 flex-shrink-0", children: [jsxRuntime.jsx(Text, { strong: true, className: "text-base block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-sm", children: subtitle })] }), jsxRuntime.jsxs("div", { className: layoutClasses.container, children: [jsxRuntime.jsx("div", { className: layoutClasses.mainVideo, children: jsxRuntime.jsx("div", { className: "relative w-full h-full overflow-hidden rounded-lg bg-black", children: error ? (jsxRuntime.jsxs("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: [jsxRuntime.jsx(Text, { className: "text-white mb-2", children: "Failed to load stream" }), jsxRuntime.jsx(antd.Button, { type: "primary", icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), onClick: handleRetry, children: "Retry" })] })) : (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: activeStream, autoPlay: isPlaying, muted: isMuted, controls: false, onError: (error) => handleError(error, activeStream) }, `${activeStream.id}-${Date.now()}`), jsxRuntime.jsxs("div", { className: "absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded", children: [activeStream.title, activeStream.isLive && (jsxRuntime.jsx("span", { className: "ml-2 px-1 bg-red-600 rounded text-[10px]", children: "LIVE" }))] }), jsxRuntime.jsx("div", { className: "absolute top-2 right-2", children: jsxRuntime.jsx(antd.Button, { type: "text", size: "small", icon: jsxRuntime.jsx(icons.ArrowsAltOutlined, {}), onClick: () => setIsModalOpen(true), className: "text-white hover:text-gray-300", title: "Expand" }) })] })) }) }), showThumbnails && streamCount > 1 && (jsxRuntime.jsx("div", { className: layoutClasses.thumbnailContainer, children: jsxRuntime.jsx(ThumbnailGrid, { streams: streams, activeStreamIndex: activeStreamIndex, onStreamSelect: handleStreamChange, onFullscreen: () => setIsModalOpen(true), layout: streamCount === 2 ? 'horizontal' : 'vertical' }) }))] })] }) }), jsxRuntime.jsx(antd.Modal, { open: isModalOpen, onCancel: () => setIsModalOpen(false), footer: null, width: "90vw", centered: true, closable: false, bodyStyle: { padding: 0, height: '90vh' }, className: "fullscreen-modal", children: jsxRuntime.jsxs("div", { className: "relative h-full bg-black", children: [jsxRuntime.jsx(VideoPlayer, { stream: activeStream, autoPlay: isPlaying, muted: isMuted, controls: true, className: "h-full", onError: (error) => handleError(error, activeStream) }, `modal-${activeStream.id}`), jsxRuntime.jsx(antd.Button, { type: "text", size: "large", icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}), onClick: () => setIsModalOpen(false), className: "absolute top-4 right-4 text-white hover:text-gray-300 z-10", title: "Exit fullscreen" })] }) })] }));
+    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), bodyStyle: { padding: 16, height: '100%' }, children: jsxRuntime.jsxs("div", { className: "flex flex-col h-full", children: [jsxRuntime.jsx("div", { className: "mb-4 flex-shrink-0", children: jsxRuntime.jsxs("div", { className: "flex items-center justify-between", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { strong: true, className: "text-base block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-sm", children: subtitle })] }), enableKeyboardControls && (jsxRuntime.jsx("div", { className: "text-xs text-gray-400", children: jsxRuntime.jsx(Text, { type: "secondary", className: "text-xs", children: "Keyboard: Space (play/pause), M (mute), F (fullscreen), \u2190\u2192 (switch)" }) }))] }) }), jsxRuntime.jsxs("div", { className: layoutClasses.container, children: [jsxRuntime.jsx("div", { className: layoutClasses.mainVideo, children: jsxRuntime.jsx(MainVideoPlayer, { stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, error: error, showControls: controls, streamCount: streamCount, onPlayPause: togglePlayPause, onMuteUnmute: toggleMute, onFullscreen: toggleFullscreen, onRetry: handleRetry, onError: handleError }) }), showThumbnails && streamCount > 1 && (jsxRuntime.jsx("div", { className: layoutClasses.thumbnailContainer, children: jsxRuntime.jsx(ThumbnailGrid, { streams: streams, activeStreamIndex: activeStreamIndex, onStreamSelect: handleStreamChange, onFullscreen: toggleFullscreen, layout: streamCount === 2 ? 'horizontal' : 'vertical', maxVisible: maxThumbnails }) }))] })] }) }), enableFullscreen && (jsxRuntime.jsx(FullscreenModal, { isOpen: isFullscreen, stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, onClose: () => toggleFullscreen(), onError: handleError }))] }));
 };
 
 const defaultTheme = {
@@ -373,7 +480,7 @@ const themeVariants = {
     },
 };
 
-const SafeSpaceThemeContext = react.createContext({
+const SafeSpaceThemeContext = React.createContext({
     theme: defaultTheme,
     variant: 'default',
 });
@@ -406,107 +513,16 @@ const SafeSpaceThemeProvider = ({ children, variant = 'default', customTheme, })
     return (jsxRuntime.jsx(SafeSpaceThemeContext.Provider, { value: { theme, variant }, children: jsxRuntime.jsx(antd.ConfigProvider, { theme: antdTheme, children: children }) }));
 };
 const useSafeSpaceTheme = () => {
-    const context = react.useContext(SafeSpaceThemeContext);
+    const context = React.useContext(SafeSpaceThemeContext);
     if (!context) {
         throw new Error('useSafeSpaceTheme must be used within a SafeSpaceThemeProvider');
     }
     return context;
 };
 
-function useVideoPlayer(streams, initialAutoPlay = true, initialMuted = true, onStreamChange, onError) {
-    const [activeStreamIndex, setActiveStreamIndex] = react.useState(0);
-    const [isPlaying, setIsPlaying] = react.useState(initialAutoPlay);
-    const [isMuted, setIsMuted] = react.useState(initialMuted);
-    const [isFullscreen, setIsFullscreen] = react.useState(false);
-    const [error, setErrorState] = react.useState(null);
-    const [isLoading, setIsLoading] = react.useState(false);
-    const togglePlayPause = react.useCallback(() => {
-        setIsPlaying(prev => !prev);
-    }, []);
-    const toggleMute = react.useCallback(() => {
-        setIsMuted(prev => !prev);
-    }, []);
-    const toggleFullscreen = react.useCallback(() => {
-        setIsFullscreen(prev => !prev);
-    }, []);
-    const clearError = react.useCallback(() => {
-        setErrorState(null);
-    }, []);
-    const setError = react.useCallback((error) => {
-        setErrorState(error);
-    }, []);
-    const setLoading = react.useCallback((loading) => {
-        setIsLoading(loading);
-    }, []);
-    const handleStreamChange = react.useCallback((streamIndex) => {
-        if (streamIndex >= 0 && streamIndex < streams.length) {
-            setActiveStreamIndex(streamIndex);
-            setErrorState(null);
-            onStreamChange?.(streams[streamIndex]);
-        }
-    }, [streams, onStreamChange]);
-    const handleError = react.useCallback((error, stream) => {
-        const errorMessage = error.message;
-        setErrorState(errorMessage);
-        onError?.(error, stream || streams[activeStreamIndex]);
-    }, [streams, activeStreamIndex, onError]);
-    const handleRetry = react.useCallback(() => {
-        setErrorState(null);
-        setIsLoading(true);
-        // Force re-render by updating the active stream index
-        setActiveStreamIndex(prev => prev);
-    }, []);
-    return {
-        // State
-        activeStreamIndex,
-        isPlaying,
-        isMuted,
-        isFullscreen,
-        error,
-        isLoading,
-        // Actions
-        setActiveStreamIndex,
-        togglePlayPause,
-        toggleMute,
-        toggleFullscreen,
-        clearError,
-        setError,
-        setLoading,
-        handleStreamChange,
-        handleError,
-        handleRetry,
-    };
-}
-
-function useStreamLayout(streamCount) {
-    return react.useMemo(() => {
-        if (streamCount === 1) {
-            return {
-                container: 'grid grid-cols-1 gap-4 h-full',
-                mainVideo: 'w-full h-full',
-                thumbnailContainer: 'hidden'
-            };
-        }
-        else if (streamCount === 2) {
-            return {
-                container: 'grid grid-cols-2 gap-4 h-full',
-                mainVideo: 'w-full h-full',
-                thumbnailContainer: 'w-full h-full'
-            };
-        }
-        else {
-            return {
-                container: 'grid grid-cols-4 gap-4 h-full',
-                mainVideo: 'col-span-3 w-full h-full',
-                thumbnailContainer: 'col-span-1 w-full h-full'
-            };
-        }
-    }, [streamCount]);
-}
-
 // Main component exports
 // Version
-const version = '0.1.3';
+const version = '0.1.4';
 
 Object.defineProperty(exports, "Button", {
   enumerable: true,
@@ -532,7 +548,9 @@ Object.defineProperty(exports, "Typography", {
   enumerable: true,
   get: function () { return antd.Typography; }
 });
+exports.FullscreenModal = FullscreenModal;
 exports.LiveFeedPlayer = LiveFeedPlayer;
+exports.MainVideoPlayer = MainVideoPlayer;
 exports.ProgressBar = ProgressBar;
 exports.SafeSpaceThemeProvider = SafeSpaceThemeProvider;
 exports.StreamInfo = StreamInfo;

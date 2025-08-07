@@ -1,0 +1,33 @@
+# Development playground
+playground/
+playgroud/
+
+# Source files (only ship dist/)
+src/
+
+# Development files
+*.test.*
+*.spec.*
+__tests__/
+.eslintrc.*
+jest.config.*
+rollup.config.*
+tsconfig.json
+
+# Documentation
+*.md
+!README.md
+
+# Git files
+.git*
+
+# Node modules
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env*
