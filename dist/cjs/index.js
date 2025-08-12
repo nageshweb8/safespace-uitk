@@ -7,6 +7,9 @@ var icons = require('@ant-design/icons');
 var Hls = require('hls.js');
 var clsx = require('clsx');
 var tailwindMerge = require('tailwind-merge');
+var hi2 = require('react-icons/hi2');
+var fi = require('react-icons/fi');
+var pi = require('react-icons/pi');
 
 function useVideoPlayer(streams, initialAutoPlay = true, initialMuted = true, onStreamChange, onError) {
     const [activeStreamIndex, setActiveStreamIndex] = React.useState(0);
@@ -520,6 +523,347 @@ const useSafeSpaceTheme = () => {
     return context;
 };
 
+/**
+ * Individual Tree Node Component
+ *
+ * Renders a single node in the tree with expand/collapse functionality
+ */
+const TreeNodeComponent = ({ node, level, isSelected = false, onLeafClick, onNodeToggle, onPinToggle, onSelectionChange, path, searchTerm, highlightSearch = true, renderNode, showExpandIcons = true, selectable = false, forceExpand = false, maxPinnedItems = 4, currentPinnedCount = 0 }) => {
+    const [isExpanded, setIsExpanded] = React.useState(node.isExpanded ?? false);
+    const [isPinning, setIsPinning] = React.useState(false);
+    // Sync with node's isExpanded prop changes
+    React.useEffect(() => {
+        setIsExpanded(node.isExpanded ?? false);
+    }, [node.isExpanded]);
+    // Handle force expand when searching
+    React.useEffect(() => {
+        if (forceExpand) {
+            setIsExpanded(true);
+        }
+    }, [forceExpand]);
+    const hasChildren = node.children && node.children.length > 0;
+    const isLeaf = !hasChildren || node.type === 'camera';
+    const currentPath = [...path, node];
+    const handleToggle = React.useCallback(() => {
+        if (!hasChildren)
+            return;
+        const newExpanded = !isExpanded;
+        setIsExpanded(newExpanded);
+        onNodeToggle?.(node, newExpanded);
+    }, [hasChildren, isExpanded, node, onNodeToggle]);
+    const handleClick = React.useCallback(() => {
+        if (isLeaf && onLeafClick) {
+            onLeafClick(node, currentPath);
+        }
+        else if (hasChildren) {
+            handleToggle();
+        }
+        if (selectable && onSelectionChange) {
+            onSelectionChange(node.key, !isSelected);
+        }
+    }, [isLeaf, hasChildren, node, currentPath, onLeafClick, handleToggle, selectable, onSelectionChange, isSelected]);
+    const handlePinToggle = React.useCallback(async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!onPinToggle)
+            return;
+        const newPinState = !node.isPinned;
+        // Check pin limit when trying to pin a camera
+        if (newPinState && currentPinnedCount >= maxPinnedItems) {
+            alert(`Pin limit exceeded! You can only pin up to ${maxPinnedItems} cameras at a time. Please unpin a camera before pinning this one.`);
+            return;
+        }
+        setIsPinning(true);
+        try {
+            await onPinToggle(node, newPinState);
+        }
+        catch (error) {
+            console.error('Failed to toggle pin:', error);
+            // You might want to show a toast notification here
+        }
+        finally {
+            setIsPinning(false);
+        }
+    }, [node, onPinToggle, currentPinnedCount, maxPinnedItems]);
+    const highlightText = React.useCallback((text, searchTerm) => {
+        if (!searchTerm || !highlightSearch)
+            return text;
+        const regex = new RegExp(`(${searchTerm})`, 'gi');
+        const parts = text.split(regex);
+        return parts.map((part, index) => regex.test(part) ? (jsxRuntime.jsx("mark", { className: "bg-yellow-200 text-yellow-900 rounded px-1", children: part }, index)) : (part));
+    }, [highlightSearch]);
+    // Custom render function takes precedence
+    if (renderNode) {
+        return (jsxRuntime.jsx("div", { style: { marginLeft: `${level * 8}px` }, children: renderNode(node, level, isLeaf) }));
+    }
+    // Render leaf nodes (cameras)
+    if (isLeaf) {
+        return (jsxRuntime.jsxs("div", { className: "flex items-center py-1 text-sm text-gray-700 hover:text-blue-600 ml-2 group", style: { marginLeft: `${level * 8}px` }, children: [jsxRuntime.jsxs("div", { className: "flex items-center flex-grow cursor-pointer", onClick: handleClick, children: [node.icon || jsxRuntime.jsx(pi.PiSecurityCameraFill, { className: "mr-2", size: 14 }), jsxRuntime.jsx("span", { className: cn("flex-grow", isSelected && "text-blue-700 font-medium"), children: highlightText(node.label, searchTerm) })] }), node.type === 'camera' && onPinToggle && (jsxRuntime.jsx("button", { onClick: handlePinToggle, disabled: isPinning || (!node.isPinned && currentPinnedCount >= maxPinnedItems), className: cn("ml-2 p-1 rounded transition-all duration-200 opacity-0 group-hover:opacity-100", node.isPinned
+                        ? "text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                        : currentPinnedCount >= maxPinnedItems
+                            ? "text-red-400 cursor-not-allowed"
+                            : "text-gray-400 hover:text-gray-600 hover:bg-gray-50", (isPinning || (!node.isPinned && currentPinnedCount >= maxPinnedItems)) && "opacity-50 cursor-not-allowed"), title: isPinning
+                        ? node.isPinned ? "Unpinning camera..." : "Pinning camera..."
+                        : !node.isPinned && currentPinnedCount >= maxPinnedItems
+                            ? `Pin limit reached (${maxPinnedItems}/${maxPinnedItems}). Unpin a camera first.`
+                            : node.isPinned
+                                ? "Unpin camera"
+                                : `Pin camera (${currentPinnedCount}/${maxPinnedItems})`, children: isPinning ? (jsxRuntime.jsx("div", { className: "animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full" })) : node.isPinned ? (jsxRuntime.jsx(pi.PiPushPinFill, { size: 14 })) : (jsxRuntime.jsx(pi.PiPushPin, { size: 14 })) })), selectable && (jsxRuntime.jsx("div", { className: cn("w-4 h-4 ml-2 border rounded flex items-center justify-center", isSelected ? "bg-blue-600 border-blue-600" : "border-gray-300"), children: isSelected && (jsxRuntime.jsx("svg", { className: "w-3 h-3 text-white", fill: "currentColor", viewBox: "0 0 20 20", children: jsxRuntime.jsx("path", { fillRule: "evenodd", d: "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z", clipRule: "evenodd" }) })) }))] }));
+    }
+    // Render parent nodes (sites/spaces)
+    return (jsxRuntime.jsxs("div", { children: [jsxRuntime.jsxs("div", { className: "flex items-center cursor-pointer py-1 text-gray-800 font-medium hover:text-blue-600", onClick: handleClick, style: { marginLeft: `${level * 8}px` }, children: [hasChildren && showExpandIcons && (isExpanded ? jsxRuntime.jsx(fi.FiChevronDown, { size: 14 }) : jsxRuntime.jsx(fi.FiChevronRight, { size: 14 })), jsxRuntime.jsx("span", { className: cn("ml-1 flex-grow", isSelected && "text-blue-700 font-medium"), children: highlightText(node.label, searchTerm) }), selectable && (jsxRuntime.jsx("div", { className: cn("w-4 h-4 ml-2 border rounded flex items-center justify-center", isSelected ? "bg-blue-600 border-blue-600" : "border-gray-300"), children: isSelected && (jsxRuntime.jsx("svg", { className: "w-3 h-3 text-white", fill: "currentColor", viewBox: "0 0 20 20", children: jsxRuntime.jsx("path", { fillRule: "evenodd", d: "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z", clipRule: "evenodd" }) })) }))] }), isExpanded && hasChildren && (jsxRuntime.jsx("div", { className: "ml-2", children: node.children.map((childNode) => (jsxRuntime.jsx(TreeNodeComponent, { node: childNode, level: level + 1, isSelected: false, onLeafClick: onLeafClick, onNodeToggle: onNodeToggle, onPinToggle: onPinToggle, onSelectionChange: onSelectionChange, path: currentPath, searchTerm: searchTerm, highlightSearch: highlightSearch, renderNode: renderNode, showExpandIcons: showExpandIcons, selectable: selectable, forceExpand: forceExpand, maxPinnedItems: maxPinnedItems, currentPinnedCount: currentPinnedCount }, childNode.key))) }))] }));
+};
+
+/**
+ * Tree Search Component
+ *
+ * Provides search functionality for the Tree component
+ */
+const TreeSearch = ({ value, onChange, placeholder = "Search...", className }) => {
+    return (jsxRuntime.jsxs("div", { className: "mb-3 relative", children: [jsxRuntime.jsx("input", { type: "text", placeholder: placeholder, value: value, onChange: (e) => onChange(e.target.value), className: "w-full border border-gray-300 rounded-md py-1.5 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#43E4FF]" }), jsxRuntime.jsx(fi.FiSearch, { size: 18, className: "absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" })] }));
+};
+
+/**
+ * SafeSpace Tree Component
+ *
+ * A reusable tree component with search functionality, icons, and customizable callbacks.
+ * Designed for displaying hierarchical data like prison monitoring structures.
+ *
+ * @example
+ * ```tsx
+ * import { Tree } from '@safespace/uitk';
+ *
+ * const data = [
+ *   {
+ *     key: 'prisons-vms',
+ *     label: 'Prisons-VMS',
+ *     children: [
+ *       {
+ *         key: 'omaha-cc',
+ *         label: 'Omaha Correctional Center',
+ *         children: [
+ *           { key: 'library-12', label: 'Library 12', children: [
+ *             { key: 'cam123', label: 'Cam123', icon: <CameraIcon /> },
+ *             { key: 'test444', label: 'Test 444', icon: <CameraIcon /> }
+ *           ]}
+ *         ]
+ *       }
+ *     ]
+ *   }
+ * ];
+ *
+ * <Tree
+ *   data={data}
+ *   title="Monitoring"
+ *   titleIcon={<VideoCameraIcon />}
+ *   searchable
+ *   onLeafClick={(node, path) => console.log('Selected:', node, path)}
+ * />
+ * ```
+ */
+const Tree = ({ data, title, titleIcon, searchable = true, searchPlaceholder = "Search...", onLeafClick, onNodeToggle, onPinToggle, maxPinnedItems = 4, className, style, showExpandIcons = true, renderNode, selectable = false, selectedKeys = [], onSelectionChange, highlightSearch = true, loading = false, emptyMessage = "No data available" }) => {
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [internalSelectedKeys, setInternalSelectedKeys] = React.useState([]);
+    // Initialize internal state only once
+    React.useEffect(() => {
+        setInternalSelectedKeys(selectedKeys);
+    }, []); // Remove selectedKeys dependency to prevent infinite re-renders
+    // Count currently pinned cameras
+    const countPinnedItems = React.useCallback((nodes) => {
+        let count = 0;
+        for (const node of nodes) {
+            if (node.type === 'camera' && node.isPinned) {
+                count++;
+            }
+            if (node.children) {
+                count += countPinnedItems(node.children);
+            }
+        }
+        return count;
+    }, []);
+    const currentPinnedCount = React.useMemo(() => countPinnedItems(data), [data, countPinnedItems]);
+    // Filter tree data based on search term
+    const filteredData = React.useMemo(() => {
+        if (!searchTerm.trim())
+            return data;
+        const filterNodes = (nodes) => {
+            return nodes.reduce((acc, node) => {
+                const matchesSearch = node.label.toLowerCase().includes(searchTerm.toLowerCase());
+                const filteredChildren = node.children ? filterNodes(node.children) : [];
+                if (matchesSearch || filteredChildren.length > 0) {
+                    acc.push({
+                        ...node,
+                        children: filteredChildren.length > 0 ? filteredChildren : node.children,
+                        isExpanded: searchTerm.trim() ? true : node.isExpanded // Auto-expand when searching
+                    });
+                }
+                return acc;
+            }, []);
+        };
+        return filterNodes(data);
+    }, [data, searchTerm]);
+    const handleSelectionChange = React.useCallback((nodeKey, selected) => {
+        const newSelectedKeys = selected
+            ? [...internalSelectedKeys, nodeKey]
+            : internalSelectedKeys.filter(key => key !== nodeKey);
+        setInternalSelectedKeys(newSelectedKeys);
+        onSelectionChange?.(newSelectedKeys);
+    }, [internalSelectedKeys, onSelectionChange]);
+    const handleNodeToggle = React.useCallback((node, expanded) => {
+        onNodeToggle?.(node, expanded);
+    }, [onNodeToggle]);
+    const handleLeafClick = React.useCallback((node, path) => {
+        onLeafClick?.(node, path);
+    }, [onLeafClick]);
+    if (loading) {
+        return (jsxRuntime.jsx("div", { className: cn("bg-white rounded-lg shadow-sm border border-gray-200", className), style: style, children: jsxRuntime.jsxs("div", { className: "p-4 animate-pulse", children: [jsxRuntime.jsx("div", { className: "h-4 bg-gray-200 rounded w-1/3 mb-4" }), jsxRuntime.jsxs("div", { className: "space-y-2", children: [jsxRuntime.jsx("div", { className: "h-3 bg-gray-200 rounded" }), jsxRuntime.jsx("div", { className: "h-3 bg-gray-200 rounded w-5/6" }), jsxRuntime.jsx("div", { className: "h-3 bg-gray-200 rounded w-4/6" })] })] }) }));
+    }
+    return (jsxRuntime.jsxs("div", { className: cn("bg-white min-w-[260px] h-full px-4 box-border border-r border-gray-300 text-sm text-gray-800", className), style: style, children: [title && (jsxRuntime.jsx("div", { className: "border-b border-gray-200 mb-2", children: jsxRuntime.jsxs("div", { className: "px-2 py-2 font-bold text-lg text-[#05162B] flex items-center gap-2", children: [titleIcon ? titleIcon : jsxRuntime.jsx(hi2.HiVideoCamera, { size: 22 }), title] }) })), searchable && (jsxRuntime.jsx(TreeSearch, { value: searchTerm, onChange: setSearchTerm, placeholder: searchPlaceholder })), jsxRuntime.jsx("div", { className: "overflow-y-auto max-h-[calc(100vh-140px)] mt-2", children: filteredData.length === 0 ? (jsxRuntime.jsx("div", { className: "text-gray-500 px-2 py-2 text-sm italic", children: searchTerm ? `No results found` : emptyMessage })) : (jsxRuntime.jsx("div", { children: filteredData.map((node) => (jsxRuntime.jsx(TreeNodeComponent, { node: node, level: 0, isSelected: internalSelectedKeys.includes(node.key), onLeafClick: handleLeafClick, onNodeToggle: handleNodeToggle, onPinToggle: onPinToggle, onSelectionChange: handleSelectionChange, path: [], searchTerm: searchTerm, highlightSearch: highlightSearch, renderNode: renderNode, showExpandIcons: showExpandIcons, selectable: selectable, forceExpand: searchTerm.length > 0, maxPinnedItems: maxPinnedItems, currentPinnedCount: currentPinnedCount }, node.key))) })) })] }));
+};
+
+/**
+ * Hook for managing tree component state
+ *
+ * Provides centralized state management for tree data, selection, expansion, and search
+ *
+ * @example
+ * ```tsx
+ * function MyTreeComponent() {
+ *   const {
+ *     filteredData,
+ *     selectedKeys,
+ *     searchTerm,
+ *     setSearchTerm,
+ *     toggleSelection,
+ *     expandAll
+ *   } = useTreeState({
+ *     initialData: treeData,
+ *     initialSelectedKeys: ['node1']
+ *   });
+ *
+ *   return (
+ *     <Tree
+ *       data={filteredData}
+ *       selectedKeys={selectedKeys}
+ *       onSelectionChange={setSelectedKeys}
+ *       // ... other props
+ *     />
+ *   );
+ * }
+ * ```
+ */
+const useTreeState = ({ initialData, initialSelectedKeys = [], initialExpandedKeys = [] }) => {
+    const [data, setData] = React.useState(initialData);
+    const [selectedKeys, setSelectedKeys] = React.useState(initialSelectedKeys);
+    const [expandedKeys, setExpandedKeys] = React.useState(initialExpandedKeys);
+    const [searchTerm, setSearchTerm] = React.useState('');
+    // Helper function to extract all keys from tree
+    const getAllKeys = React.useCallback((nodes) => {
+        const keys = [];
+        const traverse = (nodeList) => {
+            nodeList.forEach(node => {
+                keys.push(node.key);
+                if (node.children) {
+                    traverse(node.children);
+                }
+            });
+        };
+        traverse(nodes);
+        return keys;
+    }, []);
+    // Helper function to get all leaf node keys
+    const getAllLeafKeys = React.useCallback((nodes) => {
+        const leafKeys = [];
+        const traverse = (nodeList) => {
+            nodeList.forEach(node => {
+                if (!node.children || node.children.length === 0) {
+                    leafKeys.push(node.key);
+                }
+                else {
+                    traverse(node.children);
+                }
+            });
+        };
+        traverse(nodes);
+        return leafKeys;
+    }, []);
+    // Filter tree data based on search term
+    const filteredData = React.useMemo(() => {
+        if (!searchTerm.trim())
+            return data;
+        const filterNodes = (nodes) => {
+            return nodes.reduce((acc, node) => {
+                const matchesSearch = node.label.toLowerCase().includes(searchTerm.toLowerCase());
+                const filteredChildren = node.children ? filterNodes(node.children) : [];
+                if (matchesSearch || filteredChildren.length > 0) {
+                    acc.push({
+                        ...node,
+                        children: filteredChildren.length > 0 ? filteredChildren : node.children,
+                        isExpanded: searchTerm.trim() ? true : expandedKeys.includes(node.key)
+                    });
+                }
+                return acc;
+            }, []);
+        };
+        return filterNodes(data);
+    }, [data, searchTerm, expandedKeys]);
+    // Toggle selection for a single key
+    const toggleSelection = React.useCallback((key) => {
+        setSelectedKeys(prev => prev.includes(key)
+            ? prev.filter(k => k !== key)
+            : [...prev, key]);
+    }, []);
+    // Toggle expansion for a single key
+    const toggleExpansion = React.useCallback((key) => {
+        setExpandedKeys(prev => prev.includes(key)
+            ? prev.filter(k => k !== key)
+            : [...prev, key]);
+    }, []);
+    // Expand all nodes
+    const expandAll = React.useCallback(() => {
+        const allKeys = getAllKeys(data);
+        setExpandedKeys(allKeys);
+    }, [data, getAllKeys]);
+    // Collapse all nodes
+    const collapseAll = React.useCallback(() => {
+        setExpandedKeys([]);
+    }, []);
+    // Clear all selections
+    const clearSelection = React.useCallback(() => {
+        setSelectedKeys([]);
+    }, []);
+    // Select all leaf nodes
+    const selectAll = React.useCallback(() => {
+        const allLeafKeys = getAllLeafKeys(data);
+        setSelectedKeys(allLeafKeys);
+    }, [data, getAllLeafKeys]);
+    // Update tree data
+    const updateData = React.useCallback((newData) => {
+        setData(newData);
+        // Clear selections and expansions that may no longer be valid
+        const newAllKeys = getAllKeys(newData);
+        setSelectedKeys(prev => prev.filter(key => newAllKeys.includes(key)));
+        setExpandedKeys(prev => prev.filter(key => newAllKeys.includes(key)));
+    }, [getAllKeys]);
+    return {
+        data,
+        selectedKeys,
+        expandedKeys,
+        searchTerm,
+        filteredData,
+        setSearchTerm,
+        setSelectedKeys,
+        setExpandedKeys,
+        toggleSelection,
+        toggleExpansion,
+        expandAll,
+        collapseAll,
+        clearSelection,
+        selectAll,
+        updateData
+    };
+};
+
 // Main component exports
 // Version
 const version = '0.1.4';
@@ -555,11 +899,15 @@ exports.ProgressBar = ProgressBar;
 exports.SafeSpaceThemeProvider = SafeSpaceThemeProvider;
 exports.StreamInfo = StreamInfo;
 exports.ThumbnailGrid = ThumbnailGrid;
+exports.Tree = Tree;
+exports.TreeNodeComponent = TreeNodeComponent;
+exports.TreeSearch = TreeSearch;
 exports.VideoControls = VideoControls;
 exports.VideoPlayer = VideoPlayer;
 exports.cn = cn;
 exports.useSafeSpaceTheme = useSafeSpaceTheme;
 exports.useStreamLayout = useStreamLayout;
+exports.useTreeState = useTreeState;
 exports.useVideoPlayer = useVideoPlayer;
 exports.version = version;
 //# sourceMappingURL=index.js.map
