@@ -35,20 +35,24 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
   onFullscreen,
   onRetry,
   onError,
-  className
+  className,
 }) => {
   return (
-    <div className={cn('relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black', className)} style={{ aspectRatio: '16/9' }}>
+    <div
+      className={cn(
+        'relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black',
+        className
+      )}
+      style={{ aspectRatio: '16/9' }}
+    >
       {error ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
           <div className="text-center">
             <div className="text-lg mb-2">⚠️</div>
-            <div className="text-white mb-4 max-w-xs text-center">
-              {error}
-            </div>
-            <Button 
-              type="primary" 
-              icon={<ReloadOutlined />} 
+            <div className="text-white mb-4 max-w-xs text-center">{error}</div>
+            <Button
+              type="primary"
+              icon={<ReloadOutlined />}
               onClick={onRetry}
               className="bg-blue-600 hover:bg-blue-700"
             >
@@ -66,11 +70,8 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
             controls={false}
             onError={onError}
           />
-          
-          <StreamInfo
-            stream={stream}
-            showLiveIndicator={true}
-          />
+
+          <StreamInfo stream={stream} showLiveIndicator={true} />
 
           <VideoControls
             isPlaying={isPlaying}

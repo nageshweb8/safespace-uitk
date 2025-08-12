@@ -14,7 +14,7 @@ export const ThumbnailGrid: React.FC<ThumbnailGridProps> = ({
   onStreamSelect,
   onFullscreen,
   layout,
-  maxVisible = 3
+  maxVisible = 3,
 }) => {
   const streamCount = streams.length;
 
@@ -22,10 +22,10 @@ export const ThumbnailGrid: React.FC<ThumbnailGridProps> = ({
     // 50:50 layout for 2 videos
     const inactiveStream = streams[activeStreamIndex === 0 ? 1 : 0];
     const inactiveIndex = activeStreamIndex === 0 ? 1 : 0;
-    
+
     return (
       <div className="w-full h-full">
-        <div 
+        <div
           className="relative w-full h-full overflow-hidden rounded-lg bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
           onClick={() => onStreamSelect(inactiveIndex)}
         >
@@ -37,12 +37,9 @@ export const ThumbnailGrid: React.FC<ThumbnailGridProps> = ({
             showOverlay={true}
             className="hover:scale-105 transition-transform"
           />
-          
-          <StreamInfo
-            stream={inactiveStream}
-            showLiveIndicator={true}
-          />
-          
+
+          <StreamInfo stream={inactiveStream} showLiveIndicator={true} />
+
           <VideoControls
             isPlaying={false}
             isMuted={true}
@@ -54,7 +51,7 @@ export const ThumbnailGrid: React.FC<ThumbnailGridProps> = ({
           />
 
           <ProgressBar
-            progress={45 + (inactiveIndex * 10)}
+            progress={45 + inactiveIndex * 10}
             size="small"
             color="white"
           />
@@ -87,13 +84,13 @@ export const ThumbnailGrid: React.FC<ThumbnailGridProps> = ({
                 showOverlay={true}
                 className="hover:scale-105 transition-transform"
               />
-              
+
               <StreamInfo
                 stream={stream}
                 showLiveIndicator={true}
                 className="text-[10px] px-1 py-0.5"
               />
-              
+
               <VideoControls
                 isPlaying={false}
                 isMuted={true}
@@ -105,14 +102,14 @@ export const ThumbnailGrid: React.FC<ThumbnailGridProps> = ({
               />
 
               <ProgressBar
-                progress={30 + (index * 10)}
+                progress={30 + index * 10}
                 size="small"
                 color="white"
                 className="px-1 pb-0.5"
               />
             </div>
           ))}
-          
+
           {/* Show indicator if there are more videos */}
           {streams.length > maxVisible + 1 && (
             <div className="text-center py-1">

@@ -1,6 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { Modal, Card, Typography, Button } from 'antd';
-import { ArrowsAltOutlined, ShrinkOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  ArrowsAltOutlined,
+  ShrinkOutlined,
+  ReloadOutlined,
+} from '@ant-design/icons';
 import { VideoPlayer } from './VideoPlayer/VideoPlayer';
 import { ThumbnailGrid } from './shared/ThumbnailGrid';
 import { CameraStream } from '../types/video';
@@ -34,26 +38,26 @@ const getLayoutClasses = (streamCount: number): LayoutConfig => {
     return {
       container: 'grid grid-cols-1 gap-4 h-full',
       mainVideo: 'w-full h-full',
-      thumbnailContainer: 'hidden'
+      thumbnailContainer: 'hidden',
     };
   } else if (streamCount === 2) {
     return {
       container: 'grid grid-cols-2 gap-4 h-full',
       mainVideo: 'w-full h-full',
-      thumbnailContainer: 'w-full h-full'
+      thumbnailContainer: 'w-full h-full',
     };
   } else {
     return {
       container: 'grid grid-cols-4 gap-4 h-full',
       mainVideo: 'col-span-3 w-full h-full',
-      thumbnailContainer: 'col-span-1 w-full h-full'
+      thumbnailContainer: 'col-span-1 w-full h-full',
     };
   }
 };
 
 const themeClasses = {
   light: 'bg-white border-gray-200',
-  dark: 'bg-gray-900 border-gray-700'
+  dark: 'bg-gray-900 border-gray-700',
 };
 
 export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
@@ -66,7 +70,7 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
   onError,
   theme = 'light',
   title = 'Live Feed',
-  subtitle = 'All pinned cameras will be displayed here'
+  subtitle = 'All pinned cameras will be displayed here',
 }) => {
   const [activeStreamIndex, setActiveStreamIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -78,16 +82,22 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
   const streamCount = streams.length;
   const layoutClasses = getLayoutClasses(streamCount);
 
-  const handleStreamChange = useCallback((streamIndex: number) => {
-    setActiveStreamIndex(streamIndex);
-    setError(null);
-    onStreamChange?.(streams[streamIndex]);
-  }, [onStreamChange, streams]);
+  const handleStreamChange = useCallback(
+    (streamIndex: number) => {
+      setActiveStreamIndex(streamIndex);
+      setError(null);
+      onStreamChange?.(streams[streamIndex]);
+    },
+    [onStreamChange, streams]
+  );
 
-  const handleError = useCallback((error: Error, stream?: CameraStream) => {
-    setError(error.message);
-    onError?.(error, stream || activeStream);
-  }, [onError, activeStream]);
+  const handleError = useCallback(
+    (error: Error, stream?: CameraStream) => {
+      setError(error.message);
+      onError?.(error, stream || activeStream);
+    },
+    [onError, activeStream]
+  );
 
   const handleRetry = useCallback(() => {
     setError(null);
@@ -113,7 +123,9 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="mb-4 flex-shrink-0">
-            <Text strong className="text-base block">{title}</Text>
+            <Text strong className="text-base block">
+              {title}
+            </Text>
             <Text type="secondary" className="text-sm">
               {subtitle}
             </Text>
@@ -126,8 +138,14 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
               <div className="relative w-full h-full overflow-hidden rounded-lg bg-black">
                 {error ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                    <Text className="text-white mb-2">Failed to load stream</Text>
-                    <Button type="primary" icon={<ReloadOutlined />} onClick={handleRetry}>
+                    <Text className="text-white mb-2">
+                      Failed to load stream
+                    </Text>
+                    <Button
+                      type="primary"
+                      icon={<ReloadOutlined />}
+                      onClick={handleRetry}
+                    >
                       Retry
                     </Button>
                   </div>
@@ -139,14 +157,16 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
                       autoPlay={isPlaying}
                       muted={isMuted}
                       controls={false}
-                      onError={(error) => handleError(error, activeStream)}
+                      onError={error => handleError(error, activeStream)}
                     />
-                    
+
                     {/* Stream info overlay */}
                     <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                       {activeStream.title}
                       {activeStream.isLive && (
-                        <span className="ml-2 px-1 bg-red-600 rounded text-[10px]">LIVE</span>
+                        <span className="ml-2 px-1 bg-red-600 rounded text-[10px]">
+                          LIVE
+                        </span>
                       )}
                     </div>
 
@@ -201,9 +221,9 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
             muted={isMuted}
             controls={true}
             className="h-full"
-            onError={(error) => handleError(error, activeStream)}
+            onError={error => handleError(error, activeStream)}
           />
-          
+
           <Button
             type="text"
             size="large"

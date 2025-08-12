@@ -1,7 +1,7 @@
 export * from './useStreamLayout';
 export * from './useVideoPlayer';
 export * from './useTreeState';
-export type { 
+export type {
   UseVideoPlayerState,
   UseVideoPlayerActions,
   UseVideoPlayerReturn 

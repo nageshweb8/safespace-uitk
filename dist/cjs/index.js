@@ -82,21 +82,21 @@ function useStreamLayout(streamCount) {
             return {
                 container: 'grid grid-cols-1 gap-4 h-full',
                 mainVideo: 'w-full h-full',
-                thumbnailContainer: 'hidden'
+                thumbnailContainer: 'hidden',
             };
         }
         else if (streamCount === 2) {
             return {
                 container: 'grid grid-cols-2 gap-4 h-full',
                 mainVideo: 'w-full h-full',
-                thumbnailContainer: 'w-full h-full'
+                thumbnailContainer: 'w-full h-full',
             };
         }
         else {
             return {
                 container: 'grid grid-cols-4 gap-4 h-full',
                 mainVideo: 'col-span-3 w-full h-full',
-                thumbnailContainer: 'col-span-1 w-full h-full'
+                thumbnailContainer: 'col-span-1 w-full h-full',
             };
         }
     }, [streamCount]);
@@ -111,7 +111,7 @@ function cn(...inputs) {
     return tailwindMerge.twMerge(clsx.clsx(inputs));
 }
 
-const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, className, onError, onLoadStart, onLoadEnd, showOverlay = false }) => {
+const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, className, onError, onLoadStart, onLoadEnd, showOverlay = false, }) => {
     const videoRef = React.useRef(null);
     const hlsRef = React.useRef(null);
     React.useEffect(() => {
@@ -185,66 +185,66 @@ const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, 
     const handleVideoLoadedData = () => {
         onLoadEnd?.();
     };
-    return (jsxRuntime.jsxs("div", { className: cn('relative w-full h-full', className), children: [jsxRuntime.jsx("video", { ref: videoRef, autoPlay: autoPlay, muted: muted, controls: controls, playsInline: true, className: "w-full h-full object-cover", onError: handleVideoError, onLoadStart: handleVideoLoadStart, onLoadedData: handleVideoLoadedData, onContextMenu: (e) => e.preventDefault() }), showOverlay && (jsxRuntime.jsx("div", { className: "absolute inset-0 bg-black/10 hover:bg-black/20 transition-colors" }))] }));
+    return (jsxRuntime.jsxs("div", { className: cn('relative w-full h-full', className), children: [jsxRuntime.jsx("video", { ref: videoRef, autoPlay: autoPlay, muted: muted, controls: controls, playsInline: true, className: "w-full h-full object-cover", onError: handleVideoError, onLoadStart: handleVideoLoadStart, onLoadedData: handleVideoLoadedData, onContextMenu: e => e.preventDefault() }), showOverlay && (jsxRuntime.jsx("div", { className: "absolute inset-0 bg-black/10 hover:bg-black/20 transition-colors" }))] }));
 };
 
-const VideoControls = ({ isPlaying, isMuted, onPlayPause, onMuteUnmute, onFullscreen, showControls = true, size = 'medium' }) => {
+const VideoControls = ({ isPlaying, isMuted, onPlayPause, onMuteUnmute, onFullscreen, showControls = true, size = 'medium', }) => {
     if (!showControls)
         return null;
     const sizeClasses = {
         small: 'gap-0.5',
         medium: 'gap-1',
-        large: 'gap-2'
+        large: 'gap-2',
     };
     const buttonSizeClasses = {
         small: 'text-xs p-0 min-w-0 w-4 h-4'};
-    return (jsxRuntime.jsxs("div", { className: cn('absolute top-2 right-2 flex', sizeClasses[size]), children: [jsxRuntime.jsx(antd.Tooltip, { title: isPlaying ? 'Pause' : 'Play', children: jsxRuntime.jsx(antd.Button, { type: "text", size: size === 'small' ? 'small' : 'middle', icon: isPlaying ? jsxRuntime.jsx(icons.PauseOutlined, {}) : jsxRuntime.jsx(icons.PlayCircleOutlined, {}), onClick: (e) => {
+    return (jsxRuntime.jsxs("div", { className: cn('absolute top-2 right-2 flex', sizeClasses[size]), children: [jsxRuntime.jsx(antd.Tooltip, { title: isPlaying ? 'Pause' : 'Play', children: jsxRuntime.jsx(antd.Button, { type: "text", size: size === 'small' ? 'small' : 'middle', icon: isPlaying ? jsxRuntime.jsx(icons.PauseOutlined, {}) : jsxRuntime.jsx(icons.PlayCircleOutlined, {}), onClick: e => {
                         e.stopPropagation();
                         onPlayPause();
-                    }, className: cn('text-white hover:text-gray-300 hover:bg-black/20', size === 'small' && buttonSizeClasses.small) }) }), jsxRuntime.jsx(antd.Tooltip, { title: isMuted ? 'Unmute' : 'Mute', children: jsxRuntime.jsx(antd.Button, { type: "text", size: size === 'small' ? 'small' : 'middle', icon: isMuted ? jsxRuntime.jsx(icons.MutedOutlined, {}) : jsxRuntime.jsx(icons.SoundOutlined, {}), onClick: (e) => {
+                    }, className: cn('text-white hover:text-gray-300 hover:bg-black/20', size === 'small' && buttonSizeClasses.small) }) }), jsxRuntime.jsx(antd.Tooltip, { title: isMuted ? 'Unmute' : 'Mute', children: jsxRuntime.jsx(antd.Button, { type: "text", size: size === 'small' ? 'small' : 'middle', icon: isMuted ? jsxRuntime.jsx(icons.MutedOutlined, {}) : jsxRuntime.jsx(icons.SoundOutlined, {}), onClick: e => {
                         e.stopPropagation();
                         onMuteUnmute();
-                    }, className: cn('text-white hover:text-gray-300 hover:bg-black/20', size === 'small' && buttonSizeClasses.small) }) }), jsxRuntime.jsx(antd.Tooltip, { title: "Expand", children: jsxRuntime.jsx(antd.Button, { type: "text", size: size === 'small' ? 'small' : 'middle', icon: jsxRuntime.jsx(icons.ArrowsAltOutlined, {}), onClick: (e) => {
+                    }, className: cn('text-white hover:text-gray-300 hover:bg-black/20', size === 'small' && buttonSizeClasses.small) }) }), jsxRuntime.jsx(antd.Tooltip, { title: "Expand", children: jsxRuntime.jsx(antd.Button, { type: "text", size: size === 'small' ? 'small' : 'middle', icon: jsxRuntime.jsx(icons.ArrowsAltOutlined, {}), onClick: e => {
                         e.stopPropagation();
                         onFullscreen();
                     }, className: cn('text-white hover:text-gray-300 hover:bg-black/20', size === 'small' && buttonSizeClasses.small) }) })] }));
 };
 
-const StreamInfo = ({ stream, showLiveIndicator = true, className }) => {
+const StreamInfo = ({ stream, showLiveIndicator = true, className, }) => {
     return (jsxRuntime.jsxs("div", { className: cn('absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded', className), children: [jsxRuntime.jsx("span", { children: stream.title }), stream.isLive && showLiveIndicator && (jsxRuntime.jsx("span", { className: "ml-2 px-1 bg-red-600 rounded text-[10px] live-indicator", children: "LIVE" })), stream.metadata?.resolution && (jsxRuntime.jsx("span", { className: "ml-2 text-[10px] opacity-75", children: stream.metadata.resolution }))] }));
 };
 
-const ProgressBar = ({ progress, className, size = 'medium', color = 'white' }) => {
+const ProgressBar = ({ progress, className, size = 'medium', color = 'white', }) => {
     const sizeClasses = {
         small: 'h-0.5',
         medium: 'h-1',
-        large: 'h-2'
+        large: 'h-2',
     };
     const colorClasses = {
         white: 'bg-white',
         blue: 'bg-blue-500',
-        red: 'bg-red-500'
+        red: 'bg-red-500',
     };
     const backgroundClasses = {
         white: 'bg-white/20',
         blue: 'bg-blue-200',
-        red: 'bg-red-200'
+        red: 'bg-red-200',
     };
     return (jsxRuntime.jsx("div", { className: cn('absolute bottom-0 left-0 right-0 px-2 pb-1', className), children: jsxRuntime.jsx("div", { className: cn('w-full rounded', sizeClasses[size], backgroundClasses[color]), children: jsxRuntime.jsx("div", { className: cn('h-full rounded transition-all duration-300', colorClasses[color]), style: { width: `${Math.min(Math.max(progress, 0), 100)}%` } }) }) }));
 };
 
-const MainVideoPlayer = ({ stream, isPlaying, isMuted, error, showControls, streamCount, onPlayPause, onMuteUnmute, onFullscreen, onRetry, onError, className }) => {
+const MainVideoPlayer = ({ stream, isPlaying, isMuted, error, showControls, streamCount, onPlayPause, onMuteUnmute, onFullscreen, onRetry, onError, className, }) => {
     return (jsxRuntime.jsx("div", { className: cn('relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black', className), style: { aspectRatio: '16/9' }, children: error ? (jsxRuntime.jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsxRuntime.jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: error }), jsxRuntime.jsx(antd.Button, { type: "primary", icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), onClick: onRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: false, onError: onError }, `${stream.id}-${Date.now()}`), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onPlayPause, onMuteUnmute: onMuteUnmute, onFullscreen: onFullscreen, showControls: showControls && streamCount > 2, size: "medium" }), streamCount > 2 && (jsxRuntime.jsx(ProgressBar, { progress: 65, size: "medium", color: "white", className: "px-3 pb-2" }))] })) }));
 };
 
 const { Text: Text$1 } = antd.Typography;
-const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscreen, layout, maxVisible = 3 }) => {
+const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscreen, layout, maxVisible = 3, }) => {
     const streamCount = streams.length;
     if (streamCount === 2 && layout === 'horizontal') {
         // 50:50 layout for 2 videos
         const inactiveStream = streams[activeStreamIndex === 0 ? 1 : 0];
         const inactiveIndex = activeStreamIndex === 0 ? 1 : 0;
-        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "relative w-full h-full overflow-hidden rounded-lg bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all", onClick: () => onStreamSelect(inactiveIndex), children: [jsxRuntime.jsx(VideoPlayer, { stream: inactiveStream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: inactiveStream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: true, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 45 + (inactiveIndex * 10), size: "small", color: "white" })] }) }));
+        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "relative w-full h-full overflow-hidden rounded-lg bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all", onClick: () => onStreamSelect(inactiveIndex), children: [jsxRuntime.jsx(VideoPlayer, { stream: inactiveStream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: inactiveStream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: true, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 45 + inactiveIndex * 10, size: "small", color: "white" })] }) }));
     }
     if (streamCount >= 3 && layout === 'vertical') {
         // Thumbnail grid layout for 3+ videos (25% width area)
@@ -252,24 +252,24 @@ const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscree
             .map((stream, index) => ({ stream, index }))
             .filter(({ index }) => index !== activeStreamIndex)
             .slice(0, maxVisible);
-        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "flex flex-col gap-2 h-full", children: [thumbnailStreams.map(({ stream, index }) => (jsxRuntime.jsxs("div", { className: "relative overflow-hidden rounded-md bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all flex-1 min-h-0", onClick: () => onStreamSelect(index), children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true, className: "text-[10px] px-1 py-0.5" }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: false, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 30 + (index * 10), size: "small", color: "white", className: "px-1 pb-0.5" })] }, stream.id))), streams.length > maxVisible + 1 && (jsxRuntime.jsx("div", { className: "text-center py-1", children: jsxRuntime.jsxs(Text$1, { className: "text-xs text-gray-500", children: ["+", streams.length - maxVisible - 1, " more"] }) }))] }) }));
+        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "flex flex-col gap-2 h-full", children: [thumbnailStreams.map(({ stream, index }) => (jsxRuntime.jsxs("div", { className: "relative overflow-hidden rounded-md bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all flex-1 min-h-0", onClick: () => onStreamSelect(index), children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true, className: "text-[10px] px-1 py-0.5" }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: false, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 30 + index * 10, size: "small", color: "white", className: "px-1 pb-0.5" })] }, stream.id))), streams.length > maxVisible + 1 && (jsxRuntime.jsx("div", { className: "text-center py-1", children: jsxRuntime.jsxs(Text$1, { className: "text-xs text-gray-500", children: ["+", streams.length - maxVisible - 1, " more"] }) }))] }) }));
     }
     return null;
 };
 
-const FullscreenModal = ({ isOpen, stream, isPlaying, isMuted, onClose, onError }) => {
+const FullscreenModal = ({ isOpen, stream, isPlaying, isMuted, onClose, onError, }) => {
     return (jsxRuntime.jsx(antd.Modal, { open: isOpen, onCancel: onClose, footer: null, width: "90vw", centered: true, closable: false, bodyStyle: { padding: 0, height: '90vh' }, className: "fullscreen-modal", destroyOnClose: true, children: jsxRuntime.jsxs("div", { className: "relative h-full bg-black", children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: true, className: "h-full", onError: onError }, `modal-${stream.id}`), jsxRuntime.jsx(antd.Button, { type: "text", size: "large", icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}), onClick: onClose, className: "absolute top-4 right-4 text-white hover:text-gray-300 z-10", title: "Close Fullscreen" }), jsxRuntime.jsxs("div", { className: "absolute top-4 left-4 bg-black/70 text-white px-4 py-2 rounded", children: [jsxRuntime.jsx("div", { className: "text-lg font-medium", children: stream.title }), stream.metadata && (jsxRuntime.jsxs("div", { className: "text-sm opacity-75", children: [stream.metadata.resolution, " \u2022 ", stream.metadata.fps, "fps", stream.metadata.bitrate && ` • ${stream.metadata.bitrate}`] }))] })] }) }));
 };
 
 const { Text } = antd.Typography;
-const LiveFeedPlayer = ({ streams, className, autoPlay = true, muted = true, controls = true, showThumbnails = true, onStreamChange, onError, theme = 'light', title = 'Live Feed', subtitle = 'All pinned cameras will be displayed here', maxThumbnails = 3, enableFullscreen = true, enableKeyboardControls = true }) => {
+const LiveFeedPlayer = ({ streams, className, autoPlay = true, muted = true, controls = true, showThumbnails = true, onStreamChange, onError, theme = 'light', title = 'Live Feed', subtitle = 'All pinned cameras will be displayed here', maxThumbnails = 3, enableFullscreen = true, enableKeyboardControls = true, }) => {
     const { activeStreamIndex, isPlaying, isMuted, isFullscreen, error, togglePlayPause, toggleMute, toggleFullscreen, handleStreamChange, handleError, handleRetry, } = useVideoPlayer(streams, autoPlay, muted, onStreamChange, onError);
     const layoutClasses = useStreamLayout(streams.length);
     const streamCount = streams.length;
     const activeStream = streams[activeStreamIndex];
     const themeClasses = {
         light: 'bg-white border-gray-200',
-        dark: 'bg-gray-900 border-gray-700'
+        dark: 'bg-gray-900 border-gray-700',
     };
     // Keyboard controls
     React.useEffect(() => {
@@ -317,7 +317,7 @@ const LiveFeedPlayer = ({ streams, className, autoPlay = true, muted = true, con
         enableFullscreen,
         activeStreamIndex,
         streams.length,
-        handleStreamChange
+        handleStreamChange,
     ]);
     if (!streams.length) {
         return (jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), children: jsxRuntime.jsx("div", { className: "flex items-center justify-center h-64", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-4xl mb-4", children: "\uD83D\uDCF9" }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-lg", children: "No camera streams available" }), jsxRuntime.jsx("br", {}), jsxRuntime.jsx(Text, { type: "secondary", className: "text-sm", children: "Please add camera streams to view live feeds" })] }) }) }));
@@ -528,7 +528,7 @@ const useSafeSpaceTheme = () => {
  *
  * Renders a single node in the tree with expand/collapse functionality
  */
-const TreeNodeComponent = ({ node, level, isSelected = false, onLeafClick, onNodeToggle, onPinToggle, onSelectionChange, path, searchTerm, highlightSearch = true, renderNode, showExpandIcons = true, selectable = false, forceExpand = false, maxPinnedItems = 4, currentPinnedCount = 0 }) => {
+const TreeNodeComponent = ({ node, level, isSelected = false, onLeafClick, onNodeToggle, onPinToggle, onSelectionChange, path, searchTerm, highlightSearch = true, renderNode, showExpandIcons = true, selectable = false, forceExpand = false, maxPinnedItems = 4, currentPinnedCount = 0, }) => {
     const [isExpanded, setIsExpanded] = React.useState(node.isExpanded ?? false);
     const [isPinning, setIsPinning] = React.useState(false);
     // Sync with node's isExpanded prop changes
@@ -543,7 +543,7 @@ const TreeNodeComponent = ({ node, level, isSelected = false, onLeafClick, onNod
     }, [forceExpand]);
     const hasChildren = node.children && node.children.length > 0;
     const isLeaf = !hasChildren || node.type === 'camera';
-    const currentPath = [...path, node];
+    const currentPath = React.useMemo(() => [...path, node], [path, node]);
     const handleToggle = React.useCallback(() => {
         if (!hasChildren)
             return;
@@ -561,7 +561,17 @@ const TreeNodeComponent = ({ node, level, isSelected = false, onLeafClick, onNod
         if (selectable && onSelectionChange) {
             onSelectionChange(node.key, !isSelected);
         }
-    }, [isLeaf, hasChildren, node, currentPath, onLeafClick, handleToggle, selectable, onSelectionChange, isSelected]);
+    }, [
+        isLeaf,
+        hasChildren,
+        node,
+        currentPath,
+        onLeafClick,
+        handleToggle,
+        selectable,
+        onSelectionChange,
+        isSelected,
+    ]);
     const handlePinToggle = React.useCallback(async (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -598,20 +608,27 @@ const TreeNodeComponent = ({ node, level, isSelected = false, onLeafClick, onNod
     }
     // Render leaf nodes (cameras)
     if (isLeaf) {
-        return (jsxRuntime.jsxs("div", { className: "flex items-center py-1 text-sm text-gray-700 hover:text-blue-600 ml-2 group", style: { marginLeft: `${level * 8}px` }, children: [jsxRuntime.jsxs("div", { className: "flex items-center flex-grow cursor-pointer", onClick: handleClick, children: [node.icon || jsxRuntime.jsx(pi.PiSecurityCameraFill, { className: "mr-2", size: 14 }), jsxRuntime.jsx("span", { className: cn("flex-grow", isSelected && "text-blue-700 font-medium"), children: highlightText(node.label, searchTerm) })] }), node.type === 'camera' && onPinToggle && (jsxRuntime.jsx("button", { onClick: handlePinToggle, disabled: isPinning || (!node.isPinned && currentPinnedCount >= maxPinnedItems), className: cn("ml-2 p-1 rounded transition-all duration-200 opacity-0 group-hover:opacity-100", node.isPinned
-                        ? "text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+        return (jsxRuntime.jsxs("div", { className: "flex items-center py-1 text-sm text-gray-700 hover:text-blue-600 ml-2 group", style: { marginLeft: `${level * 8}px` }, children: [jsxRuntime.jsxs("div", { className: "flex items-center flex-grow cursor-pointer", onClick: handleClick, children: [node.icon || jsxRuntime.jsx(pi.PiSecurityCameraFill, { className: "mr-2", size: 14 }), jsxRuntime.jsx("span", { className: cn('flex-grow', isSelected && 'text-blue-700 font-medium'), children: highlightText(node.label, searchTerm) })] }), node.type === 'camera' && onPinToggle && (jsxRuntime.jsx("button", { onClick: handlePinToggle, disabled: isPinning ||
+                        (!node.isPinned && currentPinnedCount >= maxPinnedItems), className: cn('ml-2 p-1 rounded transition-all duration-200 opacity-0 group-hover:opacity-100', node.isPinned
+                        ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
                         : currentPinnedCount >= maxPinnedItems
-                            ? "text-red-400 cursor-not-allowed"
-                            : "text-gray-400 hover:text-gray-600 hover:bg-gray-50", (isPinning || (!node.isPinned && currentPinnedCount >= maxPinnedItems)) && "opacity-50 cursor-not-allowed"), title: isPinning
-                        ? node.isPinned ? "Unpinning camera..." : "Pinning camera..."
+                            ? 'text-red-400 cursor-not-allowed'
+                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50', (isPinning ||
+                        (!node.isPinned && currentPinnedCount >= maxPinnedItems)) &&
+                        'opacity-50 cursor-not-allowed'), title: isPinning
+                        ? node.isPinned
+                            ? 'Unpinning camera...'
+                            : 'Pinning camera...'
                         : !node.isPinned && currentPinnedCount >= maxPinnedItems
                             ? `Pin limit reached (${maxPinnedItems}/${maxPinnedItems}). Unpin a camera first.`
                             : node.isPinned
-                                ? "Unpin camera"
-                                : `Pin camera (${currentPinnedCount}/${maxPinnedItems})`, children: isPinning ? (jsxRuntime.jsx("div", { className: "animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full" })) : node.isPinned ? (jsxRuntime.jsx(pi.PiPushPinFill, { size: 14 })) : (jsxRuntime.jsx(pi.PiPushPin, { size: 14 })) })), selectable && (jsxRuntime.jsx("div", { className: cn("w-4 h-4 ml-2 border rounded flex items-center justify-center", isSelected ? "bg-blue-600 border-blue-600" : "border-gray-300"), children: isSelected && (jsxRuntime.jsx("svg", { className: "w-3 h-3 text-white", fill: "currentColor", viewBox: "0 0 20 20", children: jsxRuntime.jsx("path", { fillRule: "evenodd", d: "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z", clipRule: "evenodd" }) })) }))] }));
+                                ? 'Unpin camera'
+                                : `Pin camera (${currentPinnedCount}/${maxPinnedItems})`, children: isPinning ? (jsxRuntime.jsx("div", { className: "animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full" })) : node.isPinned ? (jsxRuntime.jsx(pi.PiPushPinFill, { size: 14 })) : (jsxRuntime.jsx(pi.PiPushPin, { size: 14 })) })), selectable && (jsxRuntime.jsx("div", { className: cn('w-4 h-4 ml-2 border rounded flex items-center justify-center', isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'), children: isSelected && (jsxRuntime.jsx("svg", { className: "w-3 h-3 text-white", fill: "currentColor", viewBox: "0 0 20 20", children: jsxRuntime.jsx("path", { fillRule: "evenodd", d: "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z", clipRule: "evenodd" }) })) }))] }));
     }
     // Render parent nodes (sites/spaces)
-    return (jsxRuntime.jsxs("div", { children: [jsxRuntime.jsxs("div", { className: "flex items-center cursor-pointer py-1 text-gray-800 font-medium hover:text-blue-600", onClick: handleClick, style: { marginLeft: `${level * 8}px` }, children: [hasChildren && showExpandIcons && (isExpanded ? jsxRuntime.jsx(fi.FiChevronDown, { size: 14 }) : jsxRuntime.jsx(fi.FiChevronRight, { size: 14 })), jsxRuntime.jsx("span", { className: cn("ml-1 flex-grow", isSelected && "text-blue-700 font-medium"), children: highlightText(node.label, searchTerm) }), selectable && (jsxRuntime.jsx("div", { className: cn("w-4 h-4 ml-2 border rounded flex items-center justify-center", isSelected ? "bg-blue-600 border-blue-600" : "border-gray-300"), children: isSelected && (jsxRuntime.jsx("svg", { className: "w-3 h-3 text-white", fill: "currentColor", viewBox: "0 0 20 20", children: jsxRuntime.jsx("path", { fillRule: "evenodd", d: "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z", clipRule: "evenodd" }) })) }))] }), isExpanded && hasChildren && (jsxRuntime.jsx("div", { className: "ml-2", children: node.children.map((childNode) => (jsxRuntime.jsx(TreeNodeComponent, { node: childNode, level: level + 1, isSelected: false, onLeafClick: onLeafClick, onNodeToggle: onNodeToggle, onPinToggle: onPinToggle, onSelectionChange: onSelectionChange, path: currentPath, searchTerm: searchTerm, highlightSearch: highlightSearch, renderNode: renderNode, showExpandIcons: showExpandIcons, selectable: selectable, forceExpand: forceExpand, maxPinnedItems: maxPinnedItems, currentPinnedCount: currentPinnedCount }, childNode.key))) }))] }));
+    return (jsxRuntime.jsxs("div", { children: [jsxRuntime.jsxs("div", { className: "flex items-center cursor-pointer py-1 text-gray-800 font-medium hover:text-blue-600", onClick: handleClick, style: { marginLeft: `${level * 8}px` }, children: [hasChildren &&
+                        showExpandIcons &&
+                        (isExpanded ? (jsxRuntime.jsx(fi.FiChevronDown, { size: 14 })) : (jsxRuntime.jsx(fi.FiChevronRight, { size: 14 }))), jsxRuntime.jsx("span", { className: cn('ml-1 flex-grow', isSelected && 'text-blue-700 font-medium'), children: highlightText(node.label, searchTerm) }), selectable && (jsxRuntime.jsx("div", { className: cn('w-4 h-4 ml-2 border rounded flex items-center justify-center', isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'), children: isSelected && (jsxRuntime.jsx("svg", { className: "w-3 h-3 text-white", fill: "currentColor", viewBox: "0 0 20 20", children: jsxRuntime.jsx("path", { fillRule: "evenodd", d: "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z", clipRule: "evenodd" }) })) }))] }), isExpanded && hasChildren && (jsxRuntime.jsx("div", { className: "ml-2", children: node.children.map(childNode => (jsxRuntime.jsx(TreeNodeComponent, { node: childNode, level: level + 1, isSelected: false, onLeafClick: onLeafClick, onNodeToggle: onNodeToggle, onPinToggle: onPinToggle, onSelectionChange: onSelectionChange, path: currentPath, searchTerm: searchTerm, highlightSearch: highlightSearch, renderNode: renderNode, showExpandIcons: showExpandIcons, selectable: selectable, forceExpand: forceExpand, maxPinnedItems: maxPinnedItems, currentPinnedCount: currentPinnedCount }, childNode.key))) }))] }));
 };
 
 /**
@@ -619,8 +636,8 @@ const TreeNodeComponent = ({ node, level, isSelected = false, onLeafClick, onNod
  *
  * Provides search functionality for the Tree component
  */
-const TreeSearch = ({ value, onChange, placeholder = "Search...", className }) => {
-    return (jsxRuntime.jsxs("div", { className: "mb-3 relative", children: [jsxRuntime.jsx("input", { type: "text", placeholder: placeholder, value: value, onChange: (e) => onChange(e.target.value), className: "w-full border border-gray-300 rounded-md py-1.5 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#43E4FF]" }), jsxRuntime.jsx(fi.FiSearch, { size: 18, className: "absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" })] }));
+const TreeSearch = ({ value, onChange, placeholder = 'Search...', }) => {
+    return (jsxRuntime.jsxs("div", { className: "mb-3 relative", children: [jsxRuntime.jsx("input", { type: "text", placeholder: placeholder, value: value, onChange: e => onChange(e.target.value), className: "w-full border border-gray-300 rounded-md py-1.5 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#43E4FF]" }), jsxRuntime.jsx(fi.FiSearch, { size: 18, className: "absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" })] }));
 };
 
 /**
@@ -661,10 +678,10 @@ const TreeSearch = ({ value, onChange, placeholder = "Search...", className }) =
  * />
  * ```
  */
-const Tree = ({ data, title, titleIcon, searchable = true, searchPlaceholder = "Search...", onLeafClick, onNodeToggle, onPinToggle, maxPinnedItems = 4, className, style, showExpandIcons = true, renderNode, selectable = false, selectedKeys = [], onSelectionChange, highlightSearch = true, loading = false, emptyMessage = "No data available" }) => {
+const Tree = ({ data, title, titleIcon, searchable = true, searchPlaceholder = 'Search...', onLeafClick, onNodeToggle, onPinToggle, maxPinnedItems = 4, className, style, showExpandIcons = true, renderNode, selectable = false, selectedKeys = [], onSelectionChange, highlightSearch = true, loading = false, emptyMessage = 'No data available', }) => {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [internalSelectedKeys, setInternalSelectedKeys] = React.useState([]);
-    // Initialize internal state only once
+    // Initialize internal state only once when selectedKeys prop changes
     React.useEffect(() => {
         setInternalSelectedKeys(selectedKeys);
     }, []); // Remove selectedKeys dependency to prevent infinite re-renders
@@ -688,13 +705,17 @@ const Tree = ({ data, title, titleIcon, searchable = true, searchPlaceholder = "
             return data;
         const filterNodes = (nodes) => {
             return nodes.reduce((acc, node) => {
-                const matchesSearch = node.label.toLowerCase().includes(searchTerm.toLowerCase());
-                const filteredChildren = node.children ? filterNodes(node.children) : [];
+                const matchesSearch = node.label
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase());
+                const filteredChildren = node.children
+                    ? filterNodes(node.children)
+                    : [];
                 if (matchesSearch || filteredChildren.length > 0) {
                     acc.push({
                         ...node,
                         children: filteredChildren.length > 0 ? filteredChildren : node.children,
-                        isExpanded: searchTerm.trim() ? true : node.isExpanded // Auto-expand when searching
+                        isExpanded: searchTerm.trim() ? true : node.isExpanded, // Auto-expand when searching
                     });
                 }
                 return acc;
@@ -716,9 +737,9 @@ const Tree = ({ data, title, titleIcon, searchable = true, searchPlaceholder = "
         onLeafClick?.(node, path);
     }, [onLeafClick]);
     if (loading) {
-        return (jsxRuntime.jsx("div", { className: cn("bg-white rounded-lg shadow-sm border border-gray-200", className), style: style, children: jsxRuntime.jsxs("div", { className: "p-4 animate-pulse", children: [jsxRuntime.jsx("div", { className: "h-4 bg-gray-200 rounded w-1/3 mb-4" }), jsxRuntime.jsxs("div", { className: "space-y-2", children: [jsxRuntime.jsx("div", { className: "h-3 bg-gray-200 rounded" }), jsxRuntime.jsx("div", { className: "h-3 bg-gray-200 rounded w-5/6" }), jsxRuntime.jsx("div", { className: "h-3 bg-gray-200 rounded w-4/6" })] })] }) }));
+        return (jsxRuntime.jsx("div", { className: cn('bg-white rounded-lg shadow-sm border border-gray-200', className), style: style, children: jsxRuntime.jsxs("div", { className: "p-4 animate-pulse", children: [jsxRuntime.jsx("div", { className: "h-4 bg-gray-200 rounded w-1/3 mb-4" }), jsxRuntime.jsxs("div", { className: "space-y-2", children: [jsxRuntime.jsx("div", { className: "h-3 bg-gray-200 rounded" }), jsxRuntime.jsx("div", { className: "h-3 bg-gray-200 rounded w-5/6" }), jsxRuntime.jsx("div", { className: "h-3 bg-gray-200 rounded w-4/6" })] })] }) }));
     }
-    return (jsxRuntime.jsxs("div", { className: cn("bg-white min-w-[260px] h-full px-4 box-border border-r border-gray-300 text-sm text-gray-800", className), style: style, children: [title && (jsxRuntime.jsx("div", { className: "border-b border-gray-200 mb-2", children: jsxRuntime.jsxs("div", { className: "px-2 py-2 font-bold text-lg text-[#05162B] flex items-center gap-2", children: [titleIcon ? titleIcon : jsxRuntime.jsx(hi2.HiVideoCamera, { size: 22 }), title] }) })), searchable && (jsxRuntime.jsx(TreeSearch, { value: searchTerm, onChange: setSearchTerm, placeholder: searchPlaceholder })), jsxRuntime.jsx("div", { className: "overflow-y-auto max-h-[calc(100vh-140px)] mt-2", children: filteredData.length === 0 ? (jsxRuntime.jsx("div", { className: "text-gray-500 px-2 py-2 text-sm italic", children: searchTerm ? `No results found` : emptyMessage })) : (jsxRuntime.jsx("div", { children: filteredData.map((node) => (jsxRuntime.jsx(TreeNodeComponent, { node: node, level: 0, isSelected: internalSelectedKeys.includes(node.key), onLeafClick: handleLeafClick, onNodeToggle: handleNodeToggle, onPinToggle: onPinToggle, onSelectionChange: handleSelectionChange, path: [], searchTerm: searchTerm, highlightSearch: highlightSearch, renderNode: renderNode, showExpandIcons: showExpandIcons, selectable: selectable, forceExpand: searchTerm.length > 0, maxPinnedItems: maxPinnedItems, currentPinnedCount: currentPinnedCount }, node.key))) })) })] }));
+    return (jsxRuntime.jsxs("div", { className: cn('bg-white min-w-[260px] h-full px-4 box-border border-r border-gray-300 text-sm text-gray-800', className), style: style, children: [title && (jsxRuntime.jsx("div", { className: "border-b border-gray-200 mb-2", children: jsxRuntime.jsxs("div", { className: "px-2 py-2 font-bold text-lg text-[#05162B] flex items-center gap-2", children: [titleIcon ? titleIcon : jsxRuntime.jsx(hi2.HiVideoCamera, { size: 22 }), title] }) })), searchable && (jsxRuntime.jsx(TreeSearch, { value: searchTerm, onChange: setSearchTerm, placeholder: searchPlaceholder })), jsxRuntime.jsx("div", { className: "overflow-y-auto max-h-[calc(100vh-140px)] mt-2", children: filteredData.length === 0 ? (jsxRuntime.jsx("div", { className: "text-gray-500 px-2 py-2 text-sm italic", children: searchTerm ? `No results found` : emptyMessage })) : (jsxRuntime.jsx("div", { children: filteredData.map(node => (jsxRuntime.jsx(TreeNodeComponent, { node: node, level: 0, isSelected: internalSelectedKeys.includes(node.key), onLeafClick: handleLeafClick, onNodeToggle: handleNodeToggle, onPinToggle: onPinToggle, onSelectionChange: handleSelectionChange, path: [], searchTerm: searchTerm, highlightSearch: highlightSearch, renderNode: renderNode, showExpandIcons: showExpandIcons, selectable: selectable, forceExpand: searchTerm.length > 0, maxPinnedItems: maxPinnedItems, currentPinnedCount: currentPinnedCount }, node.key))) })) })] }));
 };
 
 /**
@@ -752,7 +773,7 @@ const Tree = ({ data, title, titleIcon, searchable = true, searchPlaceholder = "
  * }
  * ```
  */
-const useTreeState = ({ initialData, initialSelectedKeys = [], initialExpandedKeys = [] }) => {
+const useTreeState = ({ initialData, initialSelectedKeys = [], initialExpandedKeys = [], }) => {
     const [data, setData] = React.useState(initialData);
     const [selectedKeys, setSelectedKeys] = React.useState(initialSelectedKeys);
     const [expandedKeys, setExpandedKeys] = React.useState(initialExpandedKeys);
@@ -793,13 +814,19 @@ const useTreeState = ({ initialData, initialSelectedKeys = [], initialExpandedKe
             return data;
         const filterNodes = (nodes) => {
             return nodes.reduce((acc, node) => {
-                const matchesSearch = node.label.toLowerCase().includes(searchTerm.toLowerCase());
-                const filteredChildren = node.children ? filterNodes(node.children) : [];
+                const matchesSearch = node.label
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase());
+                const filteredChildren = node.children
+                    ? filterNodes(node.children)
+                    : [];
                 if (matchesSearch || filteredChildren.length > 0) {
                     acc.push({
                         ...node,
                         children: filteredChildren.length > 0 ? filteredChildren : node.children,
-                        isExpanded: searchTerm.trim() ? true : expandedKeys.includes(node.key)
+                        isExpanded: searchTerm.trim()
+                            ? true
+                            : expandedKeys.includes(node.key),
                     });
                 }
                 return acc;
@@ -809,15 +836,11 @@ const useTreeState = ({ initialData, initialSelectedKeys = [], initialExpandedKe
     }, [data, searchTerm, expandedKeys]);
     // Toggle selection for a single key
     const toggleSelection = React.useCallback((key) => {
-        setSelectedKeys(prev => prev.includes(key)
-            ? prev.filter(k => k !== key)
-            : [...prev, key]);
+        setSelectedKeys(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
     }, []);
     // Toggle expansion for a single key
     const toggleExpansion = React.useCallback((key) => {
-        setExpandedKeys(prev => prev.includes(key)
-            ? prev.filter(k => k !== key)
-            : [...prev, key]);
+        setExpandedKeys(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
     }, []);
     // Expand all nodes
     const expandAll = React.useCallback(() => {
@@ -860,7 +883,7 @@ const useTreeState = ({ initialData, initialSelectedKeys = [], initialExpandedKe
         collapseAll,
         clearSelection,
         selectAll,
-        updateData
+        updateData,
     };
 };
 

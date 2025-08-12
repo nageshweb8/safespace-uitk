@@ -6,9 +6,9 @@ export * from './hooks';
 export { useSafeSpaceTheme } from './components/ThemeProvider';
 
 // Types (avoiding conflicts with component exports)
-export type { 
-  CameraStream, 
-  VideoPlayerProps, 
+export type {
+  CameraStream,
+  VideoPlayerProps,
   StreamLayoutConfig,
   VideoControlsProps,
   StreamInfoProps,

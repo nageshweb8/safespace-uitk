@@ -1,5 +1,5 @@
 import React from 'react';
-import { TreeNodeProps } from '../../types/tree';
+import type { TreeNodeProps } from '../../types/tree';
 /**
  * Individual Tree Node Component
  *

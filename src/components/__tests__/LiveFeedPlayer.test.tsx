@@ -11,7 +11,7 @@ const mockStreams: CameraStream[] = [
     isLive: true,
   },
   {
-    id: '2', 
+    id: '2',
     url: 'https://example.com/stream2.m3u8',
     title: 'Camera 2',
     isLive: true,

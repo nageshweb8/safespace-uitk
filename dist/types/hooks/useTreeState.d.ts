@@ -52,6 +52,6 @@ interface UseTreeStateReturn {
  * }
  * ```
  */
-export declare const useTreeState: ({ initialData, initialSelectedKeys, initialExpandedKeys }: UseTreeStateOptions) => UseTreeStateReturn;
+export declare const useTreeState: ({ initialData, initialSelectedKeys, initialExpandedKeys, }: UseTreeStateOptions) => UseTreeStateReturn;
 export {};
 //# sourceMappingURL=useTreeState.d.ts.map

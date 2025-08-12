@@ -7,7 +7,7 @@ export interface TreeNode {
   children?: TreeNode[];
   isExpandable?: boolean;
   isExpanded?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   type?: 'site' | 'space' | 'camera' | string;
   assignCameraId?: number;
   feedURL?: string;
@@ -19,92 +19,92 @@ export interface TreeProps {
    * Tree data structure
    */
   data: TreeNode[];
-  
+
   /**
    * Title to display at the top of the tree
    */
   title?: string;
-  
+
   /**
    * Icon to display next to the title
    */
   titleIcon?: ReactNode;
-  
+
   /**
    * Whether to show the search functionality
    */
   searchable?: boolean;
-  
+
   /**
    * Placeholder text for the search input
    */
   searchPlaceholder?: string;
-  
+
   /**
    * Callback when a leaf node (final item) is clicked
    */
   onLeafClick?: (node: TreeNode, path: TreeNode[]) => void;
-  
+
   /**
    * Callback when a node is expanded/collapsed
    */
   onNodeToggle?: (node: TreeNode, expanded: boolean) => void;
-  
+
   /**
    * Callback when a node is pinned/unpinned
    */
   onPinToggle?: (node: TreeNode, isPinned: boolean) => Promise<void>;
-  
+
   /**
    * Maximum number of cameras that can be pinned (default: 4)
    */
   maxPinnedItems?: number;
-  
+
   /**
    * Custom class name for the tree container
    */
   className?: string;
-  
+
   /**
    * Custom styles for the tree container
    */
   style?: React.CSSProperties;
-  
+
   /**
    * Whether to show expand/collapse icons
    */
   showExpandIcons?: boolean;
-  
+
   /**
    * Custom render function for tree nodes
    */
   renderNode?: (node: TreeNode, level: number, isLeaf: boolean) => ReactNode;
-  
+
   /**
    * Whether nodes are selectable
    */
   selectable?: boolean;
-  
+
   /**
    * Selected node keys
    */
   selectedKeys?: string[];
-  
+
   /**
    * Callback when selection changes
    */
   onSelectionChange?: (selectedKeys: string[]) => void;
-  
+
   /**
    * Whether to highlight matching search terms
    */
   highlightSearch?: boolean;
-  
+
   /**
    * Loading state
    */
   loading?: boolean;
-  
+
   /**
    * Empty state message
    */

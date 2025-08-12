@@ -24,7 +24,7 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
   subtitle = 'All pinned cameras will be displayed here',
   maxThumbnails = 3,
   enableFullscreen = true,
-  enableKeyboardControls = true
+  enableKeyboardControls = true,
 }) => {
   const {
     activeStreamIndex,
@@ -46,7 +46,7 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
 
   const themeClasses = {
     light: 'bg-white border-gray-200',
-    dark: 'bg-gray-900 border-gray-700'
+    dark: 'bg-gray-900 border-gray-700',
   };
 
   // Keyboard controls
@@ -96,7 +96,7 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
     enableFullscreen,
     activeStreamIndex,
     streams.length,
-    handleStreamChange
+    handleStreamChange,
   ]);
 
   if (!streams.length) {
@@ -129,7 +129,9 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
           <div className="mb-4 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <Text strong className="text-base block">{title}</Text>
+                <Text strong className="text-base block">
+                  {title}
+                </Text>
                 <Text type="secondary" className="text-sm">
                   {subtitle}
                 </Text>
@@ -137,7 +139,8 @@ export const LiveFeedPlayer: React.FC<LiveFeedPlayerProps> = ({
               {enableKeyboardControls && (
                 <div className="text-xs text-gray-400">
                   <Text type="secondary" className="text-xs">
-                    Keyboard: Space (play/pause), M (mute), F (fullscreen), ←→ (switch)
+                    Keyboard: Space (play/pause), M (mute), F (fullscreen), ←→
+                    (switch)
                   </Text>
                 </div>
               )}

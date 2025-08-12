@@ -39,17 +39,17 @@ const data: TreeNode[] = [
             key: 'library-12',
             label: 'Library 12',
             children: [
-              { 
-                key: 'cam123', 
+              {
+                key: 'cam123',
                 label: 'Cam123',
-                icon: <CameraIcon />
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  }
+                icon: <CameraIcon />,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 function MonitoringTree() {
@@ -74,37 +74,37 @@ function MonitoringTree() {
 
 ### TreeProps
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `data` | `TreeNode[]` | **required** | The hierarchical data to display |
-| `title` | `string` | `undefined` | Optional title displayed at the top |
-| `titleIcon` | `ReactNode` | `undefined` | Icon displayed next to the title |
-| `searchable` | `boolean` | `true` | Enable/disable search functionality |
-| `searchPlaceholder` | `string` | `"Search..."` | Placeholder text for search input |
-| `onLeafClick` | `(node: TreeNode, path: TreeNode[]) => void` | `undefined` | Callback when a leaf node is clicked |
-| `onNodeToggle` | `(node: TreeNode, expanded: boolean) => void` | `undefined` | Callback when a node is expanded/collapsed |
-| `className` | `string` | `undefined` | Custom CSS class for the tree container |
-| `style` | `React.CSSProperties` | `undefined` | Custom inline styles |
-| `showExpandIcons` | `boolean` | `true` | Show/hide expand/collapse icons |
-| `renderNode` | `(node: TreeNode, level: number, isLeaf: boolean) => ReactNode` | `undefined` | Custom node renderer function |
-| `selectable` | `boolean` | `false` | Enable node selection with checkboxes |
-| `selectedKeys` | `string[]` | `[]` | Currently selected node keys |
-| `onSelectionChange` | `(selectedKeys: string[]) => void` | `undefined` | Callback when selection changes |
-| `highlightSearch` | `boolean` | `true` | Highlight matching search terms |
-| `loading` | `boolean` | `false` | Show loading state |
-| `emptyMessage` | `string` | `"No data available"` | Message shown when no data |
+| Prop                | Type                                                            | Default               | Description                                |
+| ------------------- | --------------------------------------------------------------- | --------------------- | ------------------------------------------ |
+| `data`              | `TreeNode[]`                                                    | **required**          | The hierarchical data to display           |
+| `title`             | `string`                                                        | `undefined`           | Optional title displayed at the top        |
+| `titleIcon`         | `ReactNode`                                                     | `undefined`           | Icon displayed next to the title           |
+| `searchable`        | `boolean`                                                       | `true`                | Enable/disable search functionality        |
+| `searchPlaceholder` | `string`                                                        | `"Search..."`         | Placeholder text for search input          |
+| `onLeafClick`       | `(node: TreeNode, path: TreeNode[]) => void`                    | `undefined`           | Callback when a leaf node is clicked       |
+| `onNodeToggle`      | `(node: TreeNode, expanded: boolean) => void`                   | `undefined`           | Callback when a node is expanded/collapsed |
+| `className`         | `string`                                                        | `undefined`           | Custom CSS class for the tree container    |
+| `style`             | `React.CSSProperties`                                           | `undefined`           | Custom inline styles                       |
+| `showExpandIcons`   | `boolean`                                                       | `true`                | Show/hide expand/collapse icons            |
+| `renderNode`        | `(node: TreeNode, level: number, isLeaf: boolean) => ReactNode` | `undefined`           | Custom node renderer function              |
+| `selectable`        | `boolean`                                                       | `false`               | Enable node selection with checkboxes      |
+| `selectedKeys`      | `string[]`                                                      | `[]`                  | Currently selected node keys               |
+| `onSelectionChange` | `(selectedKeys: string[]) => void`                              | `undefined`           | Callback when selection changes            |
+| `highlightSearch`   | `boolean`                                                       | `true`                | Highlight matching search terms            |
+| `loading`           | `boolean`                                                       | `false`               | Show loading state                         |
+| `emptyMessage`      | `string`                                                        | `"No data available"` | Message shown when no data                 |
 
 ### TreeNode
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `key` | `string` | Unique identifier for the node |
-| `label` | `string` | Display text for the node |
-| `icon` | `ReactNode` | Optional icon element |
-| `children` | `TreeNode[]` | Child nodes |
-| `isExpandable` | `boolean` | Whether the node can be expanded |
-| `isExpanded` | `boolean` | Initial expanded state |
-| `metadata` | `Record<string, any>` | Additional custom data |
+| Property       | Type                  | Description                      |
+| -------------- | --------------------- | -------------------------------- |
+| `key`          | `string`              | Unique identifier for the node   |
+| `label`        | `string`              | Display text for the node        |
+| `icon`         | `ReactNode`           | Optional icon element            |
+| `children`     | `TreeNode[]`          | Child nodes                      |
+| `isExpandable` | `boolean`             | Whether the node can be expanded |
+| `isExpanded`   | `boolean`             | Initial expanded state           |
+| `metadata`     | `Record<string, any>` | Additional custom data           |
 
 ## Advanced Examples
 
@@ -127,7 +127,7 @@ const customRenderNode = (node: TreeNode, level: number, isLeaf: boolean) => {
   data={data}
   renderNode={customRenderNode}
   onLeafClick={handleLeafClick}
-/>
+/>;
 ```
 
 ### With Selection
@@ -166,11 +166,11 @@ function PrisonMonitoringTree() {
     if (node.metadata?.type === 'camera') {
       // Connect to camera stream
       connectToCamera(node.metadata.cameraId);
-      
+
       // Track user action
       analytics.track('camera_selected', {
         cameraId: node.metadata.cameraId,
-        location: path.map(n => n.label).join(' > ')
+        location: path.map(n => n.label).join(' > '),
       });
     }
   };
@@ -196,7 +196,7 @@ function PrisonMonitoringTree() {
 The Tree component uses Tailwind CSS classes and can be customized through:
 
 1. **Custom CSS Classes**: Pass `className` prop
-2. **Inline Styles**: Pass `style` prop  
+2. **Inline Styles**: Pass `style` prop
 3. **Tailwind Utilities**: Wrap in containers with Tailwind classes
 4. **CSS Variables**: Override default colors and spacing
 

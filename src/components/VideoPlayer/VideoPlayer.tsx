@@ -12,7 +12,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onError,
   onLoadStart,
   onLoadEnd,
-  showOverlay = false
+  showOverlay = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -47,11 +47,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         autoStartLoad: true,
         capLevelToPlayerSize: true,
       });
-      
+
       hlsRef.current = hls;
       hls.loadSource(stream.url);
       hls.attachMedia(video);
-      
+
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         onLoadEnd?.();
       });
@@ -68,11 +68,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               try {
                 hls.recoverMediaError();
               } catch (recoverError) {
-                onError?.(new Error(`Media Error Recovery Failed: ${recoverError}`));
+                onError?.(
+                  new Error(`Media Error Recovery Failed: ${recoverError}`)
+                );
               }
               break;
             default:
-              onError?.(new Error(`Fatal Error: ${data.type} - ${data.details}`));
+              onError?.(
+                new Error(`Fatal Error: ${data.type} - ${data.details}`)
+              );
               break;
           }
         }
@@ -108,9 +112,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         onError={handleVideoError}
         onLoadStart={handleVideoLoadStart}
         onLoadedData={handleVideoLoadedData}
-        onContextMenu={(e) => e.preventDefault()} // Disable right-click menu
+        onContextMenu={e => e.preventDefault()} // Disable right-click menu
       />
-      
+
       {showOverlay && (
         <div className="absolute inset-0 bg-black/10 hover:bg-black/20 transition-colors" />
       )}

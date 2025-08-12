@@ -7,14 +7,14 @@ import { cn } from '../../utils/cn';
 
 /**
  * SafeSpace Tree Component
- * 
+ *
  * A reusable tree component with search functionality, icons, and customizable callbacks.
  * Designed for displaying hierarchical data like prison monitoring structures.
- * 
+ *
  * @example
  * ```tsx
  * import { Tree } from '@safespace/uitk';
- * 
+ *
  * const data = [
  *   {
  *     key: 'prisons-vms',
@@ -33,7 +33,7 @@ import { cn } from '../../utils/cn';
  *     ]
  *   }
  * ];
- * 
+ *
  * <Tree
  *   data={data}
  *   title="Monitoring"
@@ -48,7 +48,7 @@ export const Tree: React.FC<TreeProps> = ({
   title,
   titleIcon,
   searchable = true,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = 'Search...',
   onLeafClick,
   onNodeToggle,
   onPinToggle,
@@ -62,12 +62,14 @@ export const Tree: React.FC<TreeProps> = ({
   onSelectionChange,
   highlightSearch = true,
   loading = false,
-  emptyMessage = "No data available"
+  emptyMessage = 'No data available',
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [internalSelectedKeys, setInternalSelectedKeys] = useState<string[]>([]);
+  const [internalSelectedKeys, setInternalSelectedKeys] = useState<string[]>(
+    []
+  );
 
-  // Initialize internal state only once
+  // Initialize internal state only once when selectedKeys prop changes
   React.useEffect(() => {
     setInternalSelectedKeys(selectedKeys);
   }, []); // Remove selectedKeys dependency to prevent infinite re-renders
@@ -86,7 +88,10 @@ export const Tree: React.FC<TreeProps> = ({
     return count;
   }, []);
 
-  const currentPinnedCount = useMemo(() => countPinnedItems(data), [data, countPinnedItems]);
+  const currentPinnedCount = useMemo(
+    () => countPinnedItems(data),
+    [data, countPinnedItems]
+  );
 
   // Filter tree data based on search term
   const filteredData = useMemo(() => {
@@ -94,17 +99,22 @@ export const Tree: React.FC<TreeProps> = ({
 
     const filterNodes = (nodes: TreeNode[]): TreeNode[] => {
       return nodes.reduce<TreeNode[]>((acc, node) => {
-        const matchesSearch = node.label.toLowerCase().includes(searchTerm.toLowerCase());
-        const filteredChildren = node.children ? filterNodes(node.children) : [];
-        
+        const matchesSearch = node.label
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+        const filteredChildren = node.children
+          ? filterNodes(node.children)
+          : [];
+
         if (matchesSearch || filteredChildren.length > 0) {
           acc.push({
             ...node,
-            children: filteredChildren.length > 0 ? filteredChildren : node.children,
-            isExpanded: searchTerm.trim() ? true : node.isExpanded // Auto-expand when searching
+            children:
+              filteredChildren.length > 0 ? filteredChildren : node.children,
+            isExpanded: searchTerm.trim() ? true : node.isExpanded, // Auto-expand when searching
           });
         }
-        
+
         return acc;
       }, []);
     };
@@ -112,26 +122,41 @@ export const Tree: React.FC<TreeProps> = ({
     return filterNodes(data);
   }, [data, searchTerm]);
 
-  const handleSelectionChange = useCallback((nodeKey: string, selected: boolean) => {
-    const newSelectedKeys = selected 
-      ? [...internalSelectedKeys, nodeKey]
-      : internalSelectedKeys.filter(key => key !== nodeKey);
-    
-    setInternalSelectedKeys(newSelectedKeys);
-    onSelectionChange?.(newSelectedKeys);
-  }, [internalSelectedKeys, onSelectionChange]);
+  const handleSelectionChange = useCallback(
+    (nodeKey: string, selected: boolean) => {
+      const newSelectedKeys = selected
+        ? [...internalSelectedKeys, nodeKey]
+        : internalSelectedKeys.filter(key => key !== nodeKey);
 
-  const handleNodeToggle = useCallback((node: TreeNode, expanded: boolean) => {
-    onNodeToggle?.(node, expanded);
-  }, [onNodeToggle]);
+      setInternalSelectedKeys(newSelectedKeys);
+      onSelectionChange?.(newSelectedKeys);
+    },
+    [internalSelectedKeys, onSelectionChange]
+  );
 
-  const handleLeafClick = useCallback((node: TreeNode, path: TreeNode[]) => {
-    onLeafClick?.(node, path);
-  }, [onLeafClick]);
+  const handleNodeToggle = useCallback(
+    (node: TreeNode, expanded: boolean) => {
+      onNodeToggle?.(node, expanded);
+    },
+    [onNodeToggle]
+  );
+
+  const handleLeafClick = useCallback(
+    (node: TreeNode, path: TreeNode[]) => {
+      onLeafClick?.(node, path);
+    },
+    [onLeafClick]
+  );
 
   if (loading) {
     return (
-      <div className={cn("bg-white rounded-lg shadow-sm border border-gray-200", className)} style={style}>
+      <div
+        className={cn(
+          'bg-white rounded-lg shadow-sm border border-gray-200',
+          className
+        )}
+        style={style}
+      >
         <div className="p-4 animate-pulse">
           <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
           <div className="space-y-2">
@@ -145,7 +170,13 @@ export const Tree: React.FC<TreeProps> = ({
   }
 
   return (
-    <div className={cn("bg-white min-w-[260px] h-full px-4 box-border border-r border-gray-300 text-sm text-gray-800", className)} style={style}>
+    <div
+      className={cn(
+        'bg-white min-w-[260px] h-full px-4 box-border border-r border-gray-300 text-sm text-gray-800',
+        className
+      )}
+      style={style}
+    >
       {/* Header with title and icon */}
       {title && (
         <div className="border-b border-gray-200 mb-2">
@@ -173,7 +204,7 @@ export const Tree: React.FC<TreeProps> = ({
           </div>
         ) : (
           <div>
-            {filteredData.map((node) => (
+            {filteredData.map(node => (
               <TreeNodeComponent
                 key={node.key}
                 node={node}

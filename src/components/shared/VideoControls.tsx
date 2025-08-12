@@ -17,20 +17,20 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
   onMuteUnmute,
   onFullscreen,
   showControls = true,
-  size = 'medium'
+  size = 'medium',
 }) => {
   if (!showControls) return null;
 
   const sizeClasses = {
     small: 'gap-0.5',
     medium: 'gap-1',
-    large: 'gap-2'
+    large: 'gap-2',
   };
 
   const buttonSizeClasses = {
     small: 'text-xs p-0 min-w-0 w-4 h-4',
     medium: 'text-sm',
-    large: 'text-base'
+    large: 'text-base',
   };
 
   return (
@@ -40,7 +40,7 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
           type="text"
           size={size === 'small' ? 'small' : 'middle'}
           icon={isPlaying ? <PauseOutlined /> : <PlayCircleOutlined />}
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation();
             onPlayPause();
           }}
@@ -50,13 +50,13 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
           )}
         />
       </Tooltip>
-      
+
       <Tooltip title={isMuted ? 'Unmute' : 'Mute'}>
         <Button
           type="text"
           size={size === 'small' ? 'small' : 'middle'}
           icon={isMuted ? <MutedOutlined /> : <SoundOutlined />}
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation();
             onMuteUnmute();
           }}
@@ -66,13 +66,13 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
           )}
         />
       </Tooltip>
-      
+
       <Tooltip title="Expand">
         <Button
           type="text"
           size={size === 'small' ? 'small' : 'middle'}
           icon={<ArrowsAltOutlined />}
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation();
             onFullscreen();
           }}

@@ -6,7 +6,7 @@ export interface TreeNode {
     children?: TreeNode[];
     isExpandable?: boolean;
     isExpanded?: boolean;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
     type?: 'site' | 'space' | 'camera' | string;
     assignCameraId?: number;
     feedURL?: string;

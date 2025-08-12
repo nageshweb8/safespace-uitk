@@ -19,7 +19,7 @@ export const FullscreenModal: React.FC<FullscreenModalProps> = ({
   isPlaying,
   isMuted,
   onClose,
-  onError
+  onError,
 }) => {
   return (
     <Modal
@@ -43,7 +43,7 @@ export const FullscreenModal: React.FC<FullscreenModalProps> = ({
           className="h-full"
           onError={onError}
         />
-        
+
         <Button
           type="text"
           size="large"
@@ -52,7 +52,7 @@ export const FullscreenModal: React.FC<FullscreenModalProps> = ({
           className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
           title="Close Fullscreen"
         />
-        
+
         {/* Stream info in fullscreen */}
         <div className="absolute top-4 left-4 bg-black/70 text-white px-4 py-2 rounded">
           <div className="text-lg font-medium">{stream.title}</div>

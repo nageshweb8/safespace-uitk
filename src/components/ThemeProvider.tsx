@@ -23,7 +23,8 @@ export const SafeSpaceThemeProvider: React.FC<SafeSpaceThemeProviderProps> = ({
   variant = 'default',
   customTheme,
 }) => {
-  const baseTheme = variant === 'default' ? defaultTheme : themeVariants[variant];
+  const baseTheme =
+    variant === 'default' ? defaultTheme : themeVariants[variant];
   const theme = customTheme ? { ...baseTheme, ...customTheme } : baseTheme;
 
   // Configure Ant Design theme
@@ -52,9 +53,7 @@ export const SafeSpaceThemeProvider: React.FC<SafeSpaceThemeProviderProps> = ({
 
   return (
     <SafeSpaceThemeContext.Provider value={{ theme, variant }}>
-      <ConfigProvider theme={antdTheme}>
-        {children}
-      </ConfigProvider>
+      <ConfigProvider theme={antdTheme}>{children}</ConfigProvider>
     </SafeSpaceThemeContext.Provider>
   );
 };
@@ -62,7 +61,9 @@ export const SafeSpaceThemeProvider: React.FC<SafeSpaceThemeProviderProps> = ({
 export const useSafeSpaceTheme = (): SafeSpaceThemeContextValue => {
   const context = useContext(SafeSpaceThemeContext);
   if (!context) {
-    throw new Error('useSafeSpaceTheme must be used within a SafeSpaceThemeProvider');
+    throw new Error(
+      'useSafeSpaceTheme must be used within a SafeSpaceThemeProvider'
+    );
   }
   return context;
 };

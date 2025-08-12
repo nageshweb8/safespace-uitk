@@ -27,9 +27,9 @@ interface UseTreeStateReturn {
 
 /**
  * Hook for managing tree component state
- * 
+ *
  * Provides centralized state management for tree data, selection, expansion, and search
- * 
+ *
  * @example
  * ```tsx
  * function MyTreeComponent() {
@@ -44,7 +44,7 @@ interface UseTreeStateReturn {
  *     initialData: treeData,
  *     initialSelectedKeys: ['node1']
  *   });
- * 
+ *
  *   return (
  *     <Tree
  *       data={filteredData}
@@ -59,17 +59,19 @@ interface UseTreeStateReturn {
 export const useTreeState = ({
   initialData,
   initialSelectedKeys = [],
-  initialExpandedKeys = []
+  initialExpandedKeys = [],
 }: UseTreeStateOptions): UseTreeStateReturn => {
   const [data, setData] = useState<TreeNode[]>(initialData);
-  const [selectedKeys, setSelectedKeys] = useState<string[]>(initialSelectedKeys);
-  const [expandedKeys, setExpandedKeys] = useState<string[]>(initialExpandedKeys);
+  const [selectedKeys, setSelectedKeys] =
+    useState<string[]>(initialSelectedKeys);
+  const [expandedKeys, setExpandedKeys] =
+    useState<string[]>(initialExpandedKeys);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Helper function to extract all keys from tree
   const getAllKeys = useCallback((nodes: TreeNode[]): string[] => {
     const keys: string[] = [];
-    
+
     const traverse = (nodeList: TreeNode[]) => {
       nodeList.forEach(node => {
         keys.push(node.key);
@@ -78,7 +80,7 @@ export const useTreeState = ({
         }
       });
     };
-    
+
     traverse(nodes);
     return keys;
   }, []);
@@ -86,7 +88,7 @@ export const useTreeState = ({
   // Helper function to get all leaf node keys
   const getAllLeafKeys = useCallback((nodes: TreeNode[]): string[] => {
     const leafKeys: string[] = [];
-    
+
     const traverse = (nodeList: TreeNode[]) => {
       nodeList.forEach(node => {
         if (!node.children || node.children.length === 0) {
@@ -96,7 +98,7 @@ export const useTreeState = ({
         }
       });
     };
-    
+
     traverse(nodes);
     return leafKeys;
   }, []);
@@ -107,17 +109,24 @@ export const useTreeState = ({
 
     const filterNodes = (nodes: TreeNode[]): TreeNode[] => {
       return nodes.reduce<TreeNode[]>((acc, node) => {
-        const matchesSearch = node.label.toLowerCase().includes(searchTerm.toLowerCase());
-        const filteredChildren = node.children ? filterNodes(node.children) : [];
-        
+        const matchesSearch = node.label
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+        const filteredChildren = node.children
+          ? filterNodes(node.children)
+          : [];
+
         if (matchesSearch || filteredChildren.length > 0) {
           acc.push({
             ...node,
-            children: filteredChildren.length > 0 ? filteredChildren : node.children,
-            isExpanded: searchTerm.trim() ? true : expandedKeys.includes(node.key)
+            children:
+              filteredChildren.length > 0 ? filteredChildren : node.children,
+            isExpanded: searchTerm.trim()
+              ? true
+              : expandedKeys.includes(node.key),
           });
         }
-        
+
         return acc;
       }, []);
     };
@@ -127,19 +136,15 @@ export const useTreeState = ({
 
   // Toggle selection for a single key
   const toggleSelection = useCallback((key: string) => {
-    setSelectedKeys(prev => 
-      prev.includes(key) 
-        ? prev.filter(k => k !== key)
-        : [...prev, key]
+    setSelectedKeys(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
     );
   }, []);
 
   // Toggle expansion for a single key
   const toggleExpansion = useCallback((key: string) => {
-    setExpandedKeys(prev => 
-      prev.includes(key) 
-        ? prev.filter(k => k !== key)
-        : [...prev, key]
+    setExpandedKeys(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
     );
   }, []);
 
@@ -166,13 +171,16 @@ export const useTreeState = ({
   }, [data, getAllLeafKeys]);
 
   // Update tree data
-  const updateData = useCallback((newData: TreeNode[]) => {
-    setData(newData);
-    // Clear selections and expansions that may no longer be valid
-    const newAllKeys = getAllKeys(newData);
-    setSelectedKeys(prev => prev.filter(key => newAllKeys.includes(key)));
-    setExpandedKeys(prev => prev.filter(key => newAllKeys.includes(key)));
-  }, [getAllKeys]);
+  const updateData = useCallback(
+    (newData: TreeNode[]) => {
+      setData(newData);
+      // Clear selections and expansions that may no longer be valid
+      const newAllKeys = getAllKeys(newData);
+      setSelectedKeys(prev => prev.filter(key => newAllKeys.includes(key)));
+      setExpandedKeys(prev => prev.filter(key => newAllKeys.includes(key)));
+    },
+    [getAllKeys]
+  );
 
   return {
     data,
@@ -189,6 +197,6 @@ export const useTreeState = ({
     collapseAll,
     clearSelection,
     selectAll,
-    updateData
+    updateData,
   };
 };

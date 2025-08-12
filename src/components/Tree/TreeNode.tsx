@@ -1,12 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { FiChevronDown, FiChevronRight } from 'react-icons/fi';
 import { PiSecurityCameraFill, PiPushPinFill, PiPushPin } from 'react-icons/pi';
-import { TreeNodeProps, TreeNode } from '../../types/tree';
+import type { TreeNodeProps } from '../../types/tree';
 import { cn } from '../../utils/cn';
 
 /**
  * Individual Tree Node Component
- * 
+ *
  * Renders a single node in the tree with expand/collapse functionality
  */
 export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
@@ -25,11 +25,11 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   selectable = false,
   forceExpand = false,
   maxPinnedItems = 4,
-  currentPinnedCount = 0
+  currentPinnedCount = 0,
 }) => {
   const [isExpanded, setIsExpanded] = useState(node.isExpanded ?? false);
   const [isPinning, setIsPinning] = useState(false);
-  
+
   // Sync with node's isExpanded prop changes
   useEffect(() => {
     setIsExpanded(node.isExpanded ?? false);
@@ -41,14 +41,14 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
       setIsExpanded(true);
     }
   }, [forceExpand]);
-  
+
   const hasChildren = node.children && node.children.length > 0;
   const isLeaf = !hasChildren || node.type === 'camera';
-  const currentPath = [...path, node];
+  const currentPath = useMemo(() => [...path, node], [path, node]);
 
   const handleToggle = useCallback(() => {
     if (!hasChildren) return;
-    
+
     const newExpanded = !isExpanded;
     setIsExpanded(newExpanded);
     onNodeToggle?.(node, newExpanded);
@@ -60,53 +60,74 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
     } else if (hasChildren) {
       handleToggle();
     }
-    
+
     if (selectable && onSelectionChange) {
       onSelectionChange(node.key, !isSelected);
     }
-  }, [isLeaf, hasChildren, node, currentPath, onLeafClick, handleToggle, selectable, onSelectionChange, isSelected]);
+  }, [
+    isLeaf,
+    hasChildren,
+    node,
+    currentPath,
+    onLeafClick,
+    handleToggle,
+    selectable,
+    onSelectionChange,
+    isSelected,
+  ]);
 
-  const handlePinToggle = useCallback(async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!onPinToggle) return;
-    
-    const newPinState = !node.isPinned;
-    
-    // Check pin limit when trying to pin a camera
-    if (newPinState && currentPinnedCount >= maxPinnedItems) {
-      alert(`Pin limit exceeded! You can only pin up to ${maxPinnedItems} cameras at a time. Please unpin a camera before pinning this one.`);
-      return;
-    }
-    
-    setIsPinning(true);
-    try {
-      await onPinToggle(node, newPinState);
-    } catch (error) {
-      console.error('Failed to toggle pin:', error);
-      // You might want to show a toast notification here
-    } finally {
-      setIsPinning(false);
-    }
-  }, [node, onPinToggle, currentPinnedCount, maxPinnedItems]);
+  const handlePinToggle = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-  const highlightText = useCallback((text: string, searchTerm?: string) => {
-    if (!searchTerm || !highlightSearch) return text;
-    
-    const regex = new RegExp(`(${searchTerm})`, 'gi');
-    const parts = text.split(regex);
-    
-    return parts.map((part, index) => 
-      regex.test(part) ? (
-        <mark key={index} className="bg-yellow-200 text-yellow-900 rounded px-1">
-          {part}
-        </mark>
-      ) : (
-        part
-      )
-    );
-  }, [highlightSearch]);
+      if (!onPinToggle) return;
+
+      const newPinState = !node.isPinned;
+
+      // Check pin limit when trying to pin a camera
+      if (newPinState && currentPinnedCount >= maxPinnedItems) {
+        alert(
+          `Pin limit exceeded! You can only pin up to ${maxPinnedItems} cameras at a time. Please unpin a camera before pinning this one.`
+        );
+        return;
+      }
+
+      setIsPinning(true);
+      try {
+        await onPinToggle(node, newPinState);
+      } catch (error) {
+        console.error('Failed to toggle pin:', error);
+        // You might want to show a toast notification here
+      } finally {
+        setIsPinning(false);
+      }
+    },
+    [node, onPinToggle, currentPinnedCount, maxPinnedItems]
+  );
+
+  const highlightText = useCallback(
+    (text: string, searchTerm?: string) => {
+      if (!searchTerm || !highlightSearch) return text;
+
+      const regex = new RegExp(`(${searchTerm})`, 'gi');
+      const parts = text.split(regex);
+
+      return parts.map((part, index) =>
+        regex.test(part) ? (
+          <mark
+            key={index}
+            className="bg-yellow-200 text-yellow-900 rounded px-1"
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      );
+    },
+    [highlightSearch]
+  );
 
   // Custom render function takes precedence
   if (renderNode) {
@@ -129,35 +150,44 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
           onClick={handleClick}
         >
           {node.icon || <PiSecurityCameraFill className="mr-2" size={14} />}
-          <span className={cn(
-            "flex-grow",
-            isSelected && "text-blue-700 font-medium"
-          )}>
+          <span
+            className={cn(
+              'flex-grow',
+              isSelected && 'text-blue-700 font-medium'
+            )}
+          >
             {highlightText(node.label, searchTerm)}
           </span>
         </div>
-        
+
         {/* Pin/Unpin Button - Only show for camera nodes */}
         {node.type === 'camera' && onPinToggle && (
           <button
             onClick={handlePinToggle}
-            disabled={isPinning || (!node.isPinned && currentPinnedCount >= maxPinnedItems)}
+            disabled={
+              isPinning ||
+              (!node.isPinned && currentPinnedCount >= maxPinnedItems)
+            }
             className={cn(
-              "ml-2 p-1 rounded transition-all duration-200 opacity-0 group-hover:opacity-100",
-              node.isPinned 
-                ? "text-blue-600 hover:text-blue-800 hover:bg-blue-50" 
+              'ml-2 p-1 rounded transition-all duration-200 opacity-0 group-hover:opacity-100',
+              node.isPinned
+                ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
                 : currentPinnedCount >= maxPinnedItems
-                  ? "text-red-400 cursor-not-allowed"
-                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-50",
-              (isPinning || (!node.isPinned && currentPinnedCount >= maxPinnedItems)) && "opacity-50 cursor-not-allowed"
+                  ? 'text-red-400 cursor-not-allowed'
+                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50',
+              (isPinning ||
+                (!node.isPinned && currentPinnedCount >= maxPinnedItems)) &&
+                'opacity-50 cursor-not-allowed'
             )}
             title={
               isPinning
-                ? node.isPinned ? "Unpinning camera..." : "Pinning camera..."
+                ? node.isPinned
+                  ? 'Unpinning camera...'
+                  : 'Pinning camera...'
                 : !node.isPinned && currentPinnedCount >= maxPinnedItems
                   ? `Pin limit reached (${maxPinnedItems}/${maxPinnedItems}). Unpin a camera first.`
-                  : node.isPinned 
-                    ? "Unpin camera" 
+                  : node.isPinned
+                    ? 'Unpin camera'
                     : `Pin camera (${currentPinnedCount}/${maxPinnedItems})`
             }
           >
@@ -170,15 +200,21 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
             )}
           </button>
         )}
-        
+
         {/* Selection indicator */}
         {selectable && (
-          <div className={cn(
-            "w-4 h-4 ml-2 border rounded flex items-center justify-center",
-            isSelected ? "bg-blue-600 border-blue-600" : "border-gray-300"
-          )}>
+          <div
+            className={cn(
+              'w-4 h-4 ml-2 border rounded flex items-center justify-center',
+              isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+            )}
+          >
             {isSelected && (
-              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-3 h-3 text-white"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path
                   fillRule="evenodd"
                   d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -200,24 +236,36 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
         onClick={handleClick}
         style={{ marginLeft: `${level * 8}px` }}
       >
-        {hasChildren && showExpandIcons && (
-          isExpanded ? <FiChevronDown size={14} /> : <FiChevronRight size={14} />
-        )}
-        <span className={cn(
-          "ml-1 flex-grow",
-          isSelected && "text-blue-700 font-medium"
-        )}>
+        {hasChildren &&
+          showExpandIcons &&
+          (isExpanded ? (
+            <FiChevronDown size={14} />
+          ) : (
+            <FiChevronRight size={14} />
+          ))}
+        <span
+          className={cn(
+            'ml-1 flex-grow',
+            isSelected && 'text-blue-700 font-medium'
+          )}
+        >
           {highlightText(node.label, searchTerm)}
         </span>
 
         {/* Selection indicator */}
         {selectable && (
-          <div className={cn(
-            "w-4 h-4 ml-2 border rounded flex items-center justify-center",
-            isSelected ? "bg-blue-600 border-blue-600" : "border-gray-300"
-          )}>
+          <div
+            className={cn(
+              'w-4 h-4 ml-2 border rounded flex items-center justify-center',
+              isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+            )}
+          >
             {isSelected && (
-              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-3 h-3 text-white"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path
                   fillRule="evenodd"
                   d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -232,7 +280,7 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
       {/* Children nodes */}
       {isExpanded && hasChildren && (
         <div className="ml-2">
-          {node.children!.map((childNode) => (
+          {node.children!.map(childNode => (
             <TreeNodeComponent
               key={childNode.key}
               node={childNode}

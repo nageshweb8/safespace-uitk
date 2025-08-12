@@ -23,7 +23,9 @@ export interface UseVideoPlayerActions {
   handleRetry: () => void;
 }
 
-export interface UseVideoPlayerReturn extends UseVideoPlayerState, UseVideoPlayerActions {}
+export interface UseVideoPlayerReturn
+  extends UseVideoPlayerState,
+    UseVideoPlayerActions {}
 
 export function useVideoPlayer(
   streams: CameraStream[],
@@ -63,19 +65,25 @@ export function useVideoPlayer(
     setIsLoading(loading);
   }, []);
 
-  const handleStreamChange = useCallback((streamIndex: number) => {
-    if (streamIndex >= 0 && streamIndex < streams.length) {
-      setActiveStreamIndex(streamIndex);
-      setErrorState(null);
-      onStreamChange?.(streams[streamIndex]);
-    }
-  }, [streams, onStreamChange]);
+  const handleStreamChange = useCallback(
+    (streamIndex: number) => {
+      if (streamIndex >= 0 && streamIndex < streams.length) {
+        setActiveStreamIndex(streamIndex);
+        setErrorState(null);
+        onStreamChange?.(streams[streamIndex]);
+      }
+    },
+    [streams, onStreamChange]
+  );
 
-  const handleError = useCallback((error: Error, stream?: CameraStream) => {
-    const errorMessage = error.message;
-    setErrorState(errorMessage);
-    onError?.(error, stream || streams[activeStreamIndex]);
-  }, [streams, activeStreamIndex, onError]);
+  const handleError = useCallback(
+    (error: Error, stream?: CameraStream) => {
+      const errorMessage = error.message;
+      setErrorState(errorMessage);
+      onError?.(error, stream || streams[activeStreamIndex]);
+    },
+    [streams, activeStreamIndex, onError]
+  );
 
   const handleRetry = useCallback(() => {
     setErrorState(null);
