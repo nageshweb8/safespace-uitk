@@ -56,6 +56,7 @@ export const Tree: React.FC<TreeProps> = ({
   className,
   style,
   showExpandIcons = true,
+  alwaysShowPinIcons = false,
   renderNode,
   selectable = false,
   selectedKeys = [],
@@ -223,6 +224,7 @@ export const Tree: React.FC<TreeProps> = ({
                 forceExpand={searchTerm.length > 0}
                 maxPinnedItems={maxPinnedItems}
                 currentPinnedCount={currentPinnedCount}
+                alwaysShowPinIcons={alwaysShowPinIcons}
               />
             ))}
           </div>

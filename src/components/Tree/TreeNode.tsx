@@ -26,6 +26,7 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   forceExpand = false,
   maxPinnedItems = 4,
   currentPinnedCount = 0,
+  alwaysShowPinIcons = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(node.isExpanded ?? false);
   const [isPinning, setIsPinning] = useState(false);
@@ -169,7 +170,8 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
               (!node.isPinned && currentPinnedCount >= maxPinnedItems)
             }
             className={cn(
-              'ml-2 p-1 rounded transition-all duration-200 opacity-0 group-hover:opacity-100',
+              'ml-2 p-1 rounded transition-all duration-200',
+              alwaysShowPinIcons ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
               node.isPinned
                 ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
                 : currentPinnedCount >= maxPinnedItems
@@ -299,6 +301,7 @@ export const TreeNodeComponent: React.FC<TreeNodeProps> = ({
               forceExpand={forceExpand}
               maxPinnedItems={maxPinnedItems}
               currentPinnedCount={currentPinnedCount}
+              alwaysShowPinIcons={alwaysShowPinIcons}
             />
           ))}
         </div>

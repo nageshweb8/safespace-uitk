@@ -76,6 +76,11 @@ export interface TreeProps {
   showExpandIcons?: boolean;
 
   /**
+   * Whether to always show pin icons (default: false - only on hover)
+   */
+  alwaysShowPinIcons?: boolean;
+
+  /**
    * Custom render function for tree nodes
    */
   renderNode?: (node: TreeNode, level: number, isLeaf: boolean) => ReactNode;
@@ -128,6 +133,7 @@ export interface TreeNodeProps {
   forceExpand?: boolean;
   maxPinnedItems?: number;
   currentPinnedCount?: number;
+  alwaysShowPinIcons?: boolean;
 }
 
 export interface TreeSearchProps {
