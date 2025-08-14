@@ -55,6 +55,10 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   const [enabled, setEnabled] = useState<boolean>(defaultEnabled);
   const [drawingEnabled, setDrawingEnabled] = useState<boolean>(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Track whether the user has locally edited polygons so we don't overwrite from props
+  const userDirtyRef = useRef(false);
+  // Track last stream id to reset dirty state when switching cameras
+  const lastStreamIdRef = useRef<string | number | undefined>((stream as any)?.id);
   // Prefer explicit initialPolygons, otherwise use stream.polygons if provided
   // Normalize incoming polygons into the internal Array<Polygon> shape
   const initialFromStream = useMemo<Array<Polygon>>(() => {
@@ -83,35 +87,67 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   const [currentPoints, setCurrentPoints] = useState<Array<NormalizedPoint>>([]);
   const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
-  // If consumer updates stream.polygons and no explicit initialPolygons were provided,
-  // keep local state in sync so polygons appear as per stream data.
-  useEffect(() => {
-    if (initialPolygons && initialPolygons.length) return; // explicit override
-    const sp = stream?.polygons as StreamPolygon[] | Polygon[] | Polygon | undefined;
-    if (!sp) {
-      setPolygons([]);
-      return;
-    }
-    // Single polygon
-    if (Array.isArray(sp) && sp.length && !Array.isArray((sp as any)[0])) {
-      const maybePoints = sp as unknown as Polygon;
-      if (maybePoints.length && typeof maybePoints[0] === 'object') {
-        setPolygons([maybePoints.map(p => ({ ...p }))]);
-        return;
+  // Deep compare helper for polygons
+  const deepEqualPolys = useCallback((a: Array<Polygon>, b: Array<Polygon>) => {
+    if (a === b) return true;
+    if (!a || !b || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      const pa = a[i];
+      const pb = b[i];
+      if (!pa || !pb || pa.length !== pb.length) return false;
+      for (let j = 0; j < pa.length; j++) {
+        const p1 = pa[j];
+        const p2 = pb[j];
+        if (!p1 || !p2 || p1.x !== p2.x || p1.y !== p2.y) return false;
       }
     }
-    // Polygon[]
-    if (Array.isArray(sp) && sp.length && Array.isArray((sp as any)[0])) {
-      setPolygons((sp as Polygon[]).map(poly => poly.map(p => ({ ...p }))));
+    return true;
+  }, []);
+
+  // Sync from props on first mount or when stream id changes, otherwise don't overwrite user edits
+  useEffect(() => {
+    if (initialPolygons && initialPolygons.length) return; // explicit override
+
+    const currentStreamId = (stream as any)?.id;
+    const sp = stream?.polygons as StreamPolygon[] | Polygon[] | Polygon | undefined;
+
+    // Normalize incoming
+    const toPolys = (): Array<Polygon> => {
+      if (!sp) return [];
+      if (Array.isArray(sp) && sp.length && !Array.isArray((sp as any)[0])) {
+        const maybePoints = sp as unknown as Polygon;
+        if (maybePoints.length && typeof maybePoints[0] === 'object') {
+          return [maybePoints.map(p => ({ ...p }))];
+        }
+      }
+      if (Array.isArray(sp) && sp.length && Array.isArray((sp as any)[0])) {
+        return (sp as Polygon[]).map(poly => poly.map(p => ({ ...p })));
+      }
+      if (Array.isArray(sp)) {
+        return (sp as StreamPolygon[]).map(p => [...p.points]);
+      }
+      return [];
+    };
+
+    // If stream id changed, treat as a fresh source and reset dirty state
+    if (lastStreamIdRef.current !== currentStreamId) {
+      lastStreamIdRef.current = currentStreamId;
+      userDirtyRef.current = false;
+      const next = toPolys();
+      setPolygons(next);
+      setCurrentPoints([]);
       return;
     }
-    // StreamPolygon[]
-    if (Array.isArray(sp)) {
-      setPolygons((sp as StreamPolygon[]).map(p => [...p.points]));
-      return;
+
+    // If user hasn't edited, keep in sync only when the shapes actually changed (deep compare)
+    if (!userDirtyRef.current) {
+      const next = toPolys();
+      if (!deepEqualPolys(polygons, next)) {
+        setPolygons(next);
+        setCurrentPoints([]);
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stream?.polygons]);
+  }, [stream?.polygons, stream?.id, initialPolygons, polygons, deepEqualPolys]);
 
   const recalcSize = useCallback(() => {
     const container = containerRef.current;
@@ -225,7 +261,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
       } as StreamPolygon;
     });
     onPolygonDetails?.(detailed);
-  }, [polygons, onPolygonsChange, onPolygonDetails, stream?.polygons]);
+  }, [polygons, onPolygonsChange, onPolygonDetails]);
 
   // Pointer handling on canvas
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -248,16 +284,19 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
         const nextPolys = enableMultiplePolygons ? [...polygons, newPoly] : [newPoly];
         setPolygons(nextPolys);
         setCurrentPoints([]);
+    userDirtyRef.current = true;
         return;
       }
     }
 
+  userDirtyRef.current = true;
   setCurrentPoints((prev: Array<NormalizedPoint>) => [...prev, point]);
   };
 
   const handleReset = () => {
     setPolygons([]);
     setCurrentPoints([]);
+  userDirtyRef.current = true;
   };
 
   // Fullscreen controls
