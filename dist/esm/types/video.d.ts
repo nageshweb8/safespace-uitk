@@ -10,6 +10,18 @@ export interface CameraStream {
         location?: string;
         timestamp?: string;
     };
+    polygons?: StreamPolygon[] | Polygon[] | Polygon;
+}
+export type NormalizedPoint = {
+    x: number;
+    y: number;
+};
+export type Polygon = NormalizedPoint[];
+export interface StreamPolygon {
+    id?: string;
+    label?: string;
+    color?: string;
+    points: Polygon;
 }
 export interface VideoPlayerProps {
     stream: CameraStream;

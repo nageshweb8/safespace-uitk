@@ -10,6 +10,26 @@ export interface CameraStream {
     location?: string;
     timestamp?: string;
   };
+  // Optional drawing overlay polygons for the stream.
+  // Coordinates are normalized (0..1) relative to the video container size
+  // so they automatically scale with resizing.
+  // Accepts any of the following shapes for convenience:
+  // - StreamPolygon[]: [{ id?, label?, color?, points: [{x,y}, ...] }, ...]
+  // - Polygon[]: an array of polygons, each polygon is an array of points [[{x,y}, ...], ...]
+  // - Polygon: a single polygon as an array of points [{x,y}, ...]
+  polygons?: StreamPolygon[] | Polygon[] | Polygon;
+}
+
+// Normalized point and polygon definitions used by drawing/overlay components
+export type NormalizedPoint = { x: number; y: number };
+export type Polygon = NormalizedPoint[];
+
+// Optional metadata per polygon region
+export interface StreamPolygon {
+  id?: string;
+  label?: string;
+  color?: string; // optional preferred color for stroke/fill
+  points: Polygon; // normalized [0..1]
 }
 
 export interface VideoPlayerProps {

@@ -237,7 +237,7 @@ const MainVideoPlayer = ({ stream, isPlaying, isMuted, error, showControls, stre
     return (jsxRuntime.jsx("div", { className: cn('relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black', className), style: { aspectRatio: '16/9' }, children: error ? (jsxRuntime.jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsxRuntime.jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: error }), jsxRuntime.jsx(antd.Button, { type: "primary", icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), onClick: onRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: false, onError: onError }, `${stream.id}-${Date.now()}`), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onPlayPause, onMuteUnmute: onMuteUnmute, onFullscreen: onFullscreen, showControls: showControls && streamCount > 2, size: "medium" }), streamCount > 2 && (jsxRuntime.jsx(ProgressBar, { progress: 65, size: "medium", color: "white", className: "px-3 pb-2" }))] })) }));
 };
 
-const { Text: Text$1 } = antd.Typography;
+const { Text: Text$2 } = antd.Typography;
 const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscreen, layout, maxVisible = 3, }) => {
     const streamCount = streams.length;
     if (streamCount === 2 && layout === 'horizontal') {
@@ -252,7 +252,7 @@ const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscree
             .map((stream, index) => ({ stream, index }))
             .filter(({ index }) => index !== activeStreamIndex)
             .slice(0, maxVisible);
-        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "flex flex-col gap-2 h-full", children: [thumbnailStreams.map(({ stream, index }) => (jsxRuntime.jsxs("div", { className: "relative overflow-hidden rounded-md bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all flex-1 min-h-0", onClick: () => onStreamSelect(index), children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true, className: "text-[10px] px-1 py-0.5" }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: false, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 30 + index * 10, size: "small", color: "white", className: "px-1 pb-0.5" })] }, stream.id))), streams.length > maxVisible + 1 && (jsxRuntime.jsx("div", { className: "text-center py-1", children: jsxRuntime.jsxs(Text$1, { className: "text-xs text-gray-500", children: ["+", streams.length - maxVisible - 1, " more"] }) }))] }) }));
+        return (jsxRuntime.jsx("div", { className: "w-full h-full", children: jsxRuntime.jsxs("div", { className: "flex flex-col gap-2 h-full", children: [thumbnailStreams.map(({ stream, index }) => (jsxRuntime.jsxs("div", { className: "relative overflow-hidden rounded-md bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all flex-1 min-h-0", onClick: () => onStreamSelect(index), children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true, className: "text-[10px] px-1 py-0.5" }), jsxRuntime.jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: false, size: "small" }), jsxRuntime.jsx(ProgressBar, { progress: 30 + index * 10, size: "small", color: "white", className: "px-1 pb-0.5" })] }, stream.id))), streams.length > maxVisible + 1 && (jsxRuntime.jsx("div", { className: "text-center py-1", children: jsxRuntime.jsxs(Text$2, { className: "text-xs text-gray-500", children: ["+", streams.length - maxVisible - 1, " more"] }) }))] }) }));
     }
     return null;
 };
@@ -261,7 +261,7 @@ const FullscreenModal = ({ isOpen, stream, isPlaying, isMuted, onClose, onError,
     return (jsxRuntime.jsx(antd.Modal, { open: isOpen, onCancel: onClose, footer: null, width: "90vw", centered: true, closable: false, bodyStyle: { padding: 0, height: '90vh' }, className: "fullscreen-modal", destroyOnClose: true, children: jsxRuntime.jsxs("div", { className: "relative h-full bg-black", children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: true, className: "h-full", onError: onError }, `modal-${stream.id}`), jsxRuntime.jsx(antd.Button, { type: "text", size: "large", icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}), onClick: onClose, className: "absolute top-4 right-4 text-white hover:text-gray-300 z-10", title: "Close Fullscreen" }), jsxRuntime.jsxs("div", { className: "absolute top-4 left-4 bg-black/70 text-white px-4 py-2 rounded", children: [jsxRuntime.jsx("div", { className: "text-lg font-medium", children: stream.title }), stream.metadata && (jsxRuntime.jsxs("div", { className: "text-sm opacity-75", children: [stream.metadata.resolution, " \u2022 ", stream.metadata.fps, "fps", stream.metadata.bitrate && ` • ${stream.metadata.bitrate}`] }))] })] }) }));
 };
 
-const { Text } = antd.Typography;
+const { Text: Text$1 } = antd.Typography;
 const LiveFeedPlayer = ({ streams, className, autoPlay = true, muted = true, controls = true, showThumbnails = true, onStreamChange, onError, theme = 'light', title = 'Live Feed', subtitle = 'All pinned cameras will be displayed here', maxThumbnails = 3, enableFullscreen = true, enableKeyboardControls = true, }) => {
     const { activeStreamIndex, isPlaying, isMuted, isFullscreen, error, togglePlayPause, toggleMute, toggleFullscreen, handleStreamChange, handleError, handleRetry, } = useVideoPlayer(streams, autoPlay, muted, onStreamChange, onError);
     const layoutClasses = useStreamLayout(streams.length);
@@ -320,9 +320,246 @@ const LiveFeedPlayer = ({ streams, className, autoPlay = true, muted = true, con
         handleStreamChange,
     ]);
     if (!streams.length) {
-        return (jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), children: jsxRuntime.jsx("div", { className: "flex items-center justify-center h-64", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-4xl mb-4", children: "\uD83D\uDCF9" }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-lg", children: "No camera streams available" }), jsxRuntime.jsx("br", {}), jsxRuntime.jsx(Text, { type: "secondary", className: "text-sm", children: "Please add camera streams to view live feeds" })] }) }) }));
+        return (jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), children: jsxRuntime.jsx("div", { className: "flex items-center justify-center h-64", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-4xl mb-4", children: "\uD83D\uDCF9" }), jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-lg", children: "No camera streams available" }), jsxRuntime.jsx("br", {}), jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-sm", children: "Please add camera streams to view live feeds" })] }) }) }));
     }
-    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), bodyStyle: { padding: 16, height: '100%' }, children: jsxRuntime.jsxs("div", { className: "flex flex-col h-full", children: [jsxRuntime.jsx("div", { className: "mb-4 flex-shrink-0", children: jsxRuntime.jsxs("div", { className: "flex items-center justify-between", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { strong: true, className: "text-base block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-sm", children: subtitle })] }), enableKeyboardControls && (jsxRuntime.jsx("div", { className: "text-xs text-gray-400", children: jsxRuntime.jsx(Text, { type: "secondary", className: "text-xs", children: "Keyboard: Space (play/pause), M (mute), F (fullscreen), \u2190\u2192 (switch)" }) }))] }) }), jsxRuntime.jsxs("div", { className: layoutClasses.container, children: [jsxRuntime.jsx("div", { className: layoutClasses.mainVideo, children: jsxRuntime.jsx(MainVideoPlayer, { stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, error: error, showControls: controls, streamCount: streamCount, onPlayPause: togglePlayPause, onMuteUnmute: toggleMute, onFullscreen: toggleFullscreen, onRetry: handleRetry, onError: handleError }) }), showThumbnails && streamCount > 1 && (jsxRuntime.jsx("div", { className: layoutClasses.thumbnailContainer, children: jsxRuntime.jsx(ThumbnailGrid, { streams: streams, activeStreamIndex: activeStreamIndex, onStreamSelect: handleStreamChange, onFullscreen: toggleFullscreen, layout: streamCount === 2 ? 'horizontal' : 'vertical', maxVisible: maxThumbnails }) }))] })] }) }), enableFullscreen && (jsxRuntime.jsx(FullscreenModal, { isOpen: isFullscreen, stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, onClose: () => toggleFullscreen(), onError: handleError }))] }));
+    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(antd.Card, { className: cn('w-full h-full', themeClasses[theme], className), bodyStyle: { padding: 16, height: '100%' }, children: jsxRuntime.jsxs("div", { className: "flex flex-col h-full", children: [jsxRuntime.jsx("div", { className: "mb-4 flex-shrink-0", children: jsxRuntime.jsxs("div", { className: "flex items-center justify-between", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text$1, { strong: true, className: "text-base block", children: title }), jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-sm", children: subtitle })] }), enableKeyboardControls && (jsxRuntime.jsx("div", { className: "text-xs text-gray-400", children: jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-xs", children: "Keyboard: Space (play/pause), M (mute), F (fullscreen), \u2190\u2192 (switch)" }) }))] }) }), jsxRuntime.jsxs("div", { className: layoutClasses.container, children: [jsxRuntime.jsx("div", { className: layoutClasses.mainVideo, children: jsxRuntime.jsx(MainVideoPlayer, { stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, error: error, showControls: controls, streamCount: streamCount, onPlayPause: togglePlayPause, onMuteUnmute: toggleMute, onFullscreen: toggleFullscreen, onRetry: handleRetry, onError: handleError }) }), showThumbnails && streamCount > 1 && (jsxRuntime.jsx("div", { className: layoutClasses.thumbnailContainer, children: jsxRuntime.jsx(ThumbnailGrid, { streams: streams, activeStreamIndex: activeStreamIndex, onStreamSelect: handleStreamChange, onFullscreen: toggleFullscreen, layout: streamCount === 2 ? 'horizontal' : 'vertical', maxVisible: maxThumbnails }) }))] })] }) }), enableFullscreen && (jsxRuntime.jsx(FullscreenModal, { isOpen: isFullscreen, stream: activeStream, isPlaying: isPlaying, isMuted: isMuted, onClose: () => toggleFullscreen(), onError: handleError }))] }));
+};
+
+const { Text } = antd.Typography;
+// Simple distance helper
+function distance(a, b) {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitle = 'Draw polygons (lines only) on live video', defaultEnabled = true, enableMultiplePolygons = true, initialPolygons, onPolygonsChange, onPolygonDetails, showControls, }) => {
+    const containerRef = React.useRef(null);
+    const canvasRef = React.useRef(null);
+    const [enabled, setEnabled] = React.useState(defaultEnabled);
+    const [drawingEnabled, setDrawingEnabled] = React.useState(true);
+    const [isFullscreen, setIsFullscreen] = React.useState(false);
+    // Prefer explicit initialPolygons, otherwise use stream.polygons if provided
+    // Normalize incoming polygons into the internal Array<Polygon> shape
+    const initialFromStream = React.useMemo(() => {
+        if (initialPolygons && initialPolygons.length)
+            return initialPolygons.map(p => [...p]);
+        const sp = stream?.polygons;
+        if (!sp)
+            return [];
+        // If it's a single polygon (array of points)
+        if (Array.isArray(sp) && sp.length && !Array.isArray(sp[0])) {
+            const maybePoints = sp;
+            if (maybePoints.length && typeof maybePoints[0] === 'object' && 'x' in maybePoints[0] && 'y' in maybePoints[0]) {
+                return [maybePoints.map(p => ({ ...p }))];
+            }
+        }
+        // If it's an array of polygons without metadata
+        if (Array.isArray(sp) && sp.length && Array.isArray(sp[0])) {
+            return sp.map(poly => poly.map(p => ({ ...p })));
+        }
+        // If it's StreamPolygon[]
+        if (Array.isArray(sp)) {
+            return sp.map(p => [...p.points]);
+        }
+        return [];
+    }, [initialPolygons, stream?.polygons]);
+    const [polygons, setPolygons] = React.useState(initialFromStream);
+    const [currentPoints, setCurrentPoints] = React.useState([]);
+    const [size, setSize] = React.useState({ width: 0, height: 0 });
+    // If consumer updates stream.polygons and no explicit initialPolygons were provided,
+    // keep local state in sync so polygons appear as per stream data.
+    React.useEffect(() => {
+        if (initialPolygons && initialPolygons.length)
+            return; // explicit override
+        const sp = stream?.polygons;
+        if (!sp) {
+            setPolygons([]);
+            return;
+        }
+        // Single polygon
+        if (Array.isArray(sp) && sp.length && !Array.isArray(sp[0])) {
+            const maybePoints = sp;
+            if (maybePoints.length && typeof maybePoints[0] === 'object') {
+                setPolygons([maybePoints.map(p => ({ ...p }))]);
+                return;
+            }
+        }
+        // Polygon[]
+        if (Array.isArray(sp) && sp.length && Array.isArray(sp[0])) {
+            setPolygons(sp.map(poly => poly.map(p => ({ ...p }))));
+            return;
+        }
+        // StreamPolygon[]
+        if (Array.isArray(sp)) {
+            setPolygons(sp.map(p => [...p.points]));
+            return;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [stream?.polygons]);
+    const recalcSize = React.useCallback(() => {
+        const container = containerRef.current;
+        if (!container)
+            return;
+        const rect = container.getBoundingClientRect();
+        setSize({ width: Math.max(0, rect.width), height: Math.max(0, rect.height) });
+        // Adjust canvas backing store for DPR
+        const dpr = window.devicePixelRatio || 1;
+        const canvas = canvasRef.current;
+        if (canvas) {
+            canvas.width = Math.floor(rect.width * dpr);
+            canvas.height = Math.floor(rect.height * dpr);
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height}px`;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.scale(dpr, dpr);
+            }
+        }
+    }, []);
+    React.useEffect(() => {
+        recalcSize();
+        const onResize = () => recalcSize();
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, [recalcSize]);
+    // Redraw on changes
+    React.useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas)
+            return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx)
+            return;
+        // clear
+        ctx.clearRect(0, 0, size.width, size.height);
+        const stroke = 'rgba(0,255,0,1)';
+        const activeStroke = 'rgba(255,255,0,1)';
+        // helper
+        const px = (p) => ({ x: p.x * size.width, y: p.y * size.height });
+        // Normalize base polygons (from props) to access optional color per index
+        const basePolys = stream?.polygons;
+        const baseList = Array.isArray(basePolys) && basePolys.length && !Array.isArray(basePolys[0])
+            ? [{ points: basePolys }]
+            : Array.isArray(basePolys) && Array.isArray(basePolys[0])
+                ? basePolys.map(p => ({ points: p }))
+                : basePolys || [];
+        // completed polygons
+        polygons.forEach((poly, idx) => {
+            if (poly.length < 2)
+                return;
+            ctx.beginPath();
+            const p0 = px(poly[0]);
+            ctx.moveTo(p0.x, p0.y);
+            for (let i = 1; i < poly.length; i++) {
+                const pi = px(poly[i]);
+                ctx.lineTo(pi.x, pi.y);
+            }
+            ctx.closePath();
+            const color = baseList[idx]?.color || stroke;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        });
+        // active polyline
+        if (currentPoints.length) {
+            ctx.beginPath();
+            const p0 = px(currentPoints[0]);
+            ctx.moveTo(p0.x, p0.y);
+            for (let i = 1; i < currentPoints.length; i++) {
+                const pi = px(currentPoints[i]);
+                ctx.lineTo(pi.x, pi.y);
+            }
+            ctx.strokeStyle = activeStroke;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // first point marker
+            ctx.beginPath();
+            ctx.arc(p0.x, p0.y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,0,0.9)';
+            ctx.fill();
+        }
+    }, [polygons, currentPoints, size.width, size.height]);
+    // Notify changes in both legacy and detailed shapes
+    React.useEffect(() => {
+        onPolygonsChange?.(polygons);
+        // Emit detailed polygon data with optional stream metadata preserved
+        const basePolys = stream?.polygons;
+        const baseList = Array.isArray(basePolys) && basePolys.length && !Array.isArray(basePolys[0])
+            ? [{ points: basePolys }]
+            : Array.isArray(basePolys) && Array.isArray(basePolys[0])
+                ? basePolys.map(p => ({ points: p }))
+                : basePolys || [];
+        const detailed = polygons.map((points, idx) => {
+            const base = baseList[idx] || {};
+            return {
+                id: base.id ?? String(idx + 1),
+                label: base.label,
+                color: base.color,
+                points,
+            };
+        });
+        onPolygonDetails?.(detailed);
+    }, [polygons, onPolygonsChange, onPolygonDetails, stream?.polygons]);
+    // Pointer handling on canvas
+    const handleCanvasClick = (e) => {
+        if (!drawingEnabled || !enabled)
+            return;
+        const rect = e.target.getBoundingClientRect();
+        const pointPx = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        const point = {
+            x: size.width ? pointPx.x / size.width : 0,
+            y: size.height ? pointPx.y / size.height : 0,
+        };
+        // close when near first point
+        if (currentPoints.length > 2) {
+            const firstPx = {
+                x: currentPoints[0].x * size.width,
+                y: currentPoints[0].y * size.height,
+            };
+            if (distance(pointPx, firstPx) < 12) {
+                const newPoly = [...currentPoints];
+                const nextPolys = enableMultiplePolygons ? [...polygons, newPoly] : [newPoly];
+                setPolygons(nextPolys);
+                setCurrentPoints([]);
+                return;
+            }
+        }
+        setCurrentPoints((prev) => [...prev, point]);
+    };
+    const handleReset = () => {
+        setPolygons([]);
+        setCurrentPoints([]);
+    };
+    // Fullscreen controls
+    const toggleFullscreen = async () => {
+        const el = containerRef.current;
+        if (!el)
+            return;
+        if (!document.fullscreenElement) {
+            await el.requestFullscreen();
+            setIsFullscreen(true);
+        }
+        else {
+            await document.exitFullscreen();
+            setIsFullscreen(false);
+        }
+    };
+    React.useEffect(() => {
+        const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+        document.addEventListener('fullscreenchange', onChange);
+        return () => document.removeEventListener('fullscreenchange', onChange);
+    }, []);
+    const canDraw = enabled && drawingEnabled;
+    const controlsVisible = {
+        draw: showControls?.draw ?? true,
+        viewer: showControls?.viewer ?? true,
+        reset: showControls?.reset ?? true,
+        fullscreen: showControls?.fullscreen ?? true,
+    };
+    return (jsxRuntime.jsxs(antd.Card, { className: cn('w-full h-full', className), bodyStyle: { padding: 16 }, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: setDrawingEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: toggleFullscreen, icon: isFullscreen ? jsxRuntime.jsx(icons.FullscreenExitOutlined, {}) : jsxRuntime.jsx(icons.FullscreenOutlined, {}) }) }))] })] }), jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0", style: { pointerEvents: canDraw ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : 'default' }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })] }));
 };
 
 const defaultTheme = {
@@ -917,6 +1154,7 @@ Object.defineProperty(exports, "Typography", {
 });
 exports.FullscreenModal = FullscreenModal;
 exports.LiveFeedPlayer = LiveFeedPlayer;
+exports.LiveFeedViewer = LiveFeedViewer;
 exports.MainVideoPlayer = MainVideoPlayer;
 exports.ProgressBar = ProgressBar;
 exports.SafeSpaceThemeProvider = SafeSpaceThemeProvider;

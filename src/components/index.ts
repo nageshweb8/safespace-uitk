@@ -1,5 +1,6 @@
 // Main Components
 export * from './LiveFeedPlayer';
+export * from './LiveFeedViewer';
 export * from './VideoPlayer';
 export * from './shared';
 export * from './ThemeProvider';

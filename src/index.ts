@@ -12,7 +12,10 @@ export type {
   StreamLayoutConfig,
   VideoControlsProps,
   StreamInfoProps,
-  ThumbnailGridProps 
+  ThumbnailGridProps,
+  NormalizedPoint,
+  Polygon,
+  StreamPolygon
 } from './types/video';
 export type { SafeSpaceTheme } from './types/theme';
 
