@@ -338,10 +338,17 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   };
 
   const handleReset = () => {
-    setPolygons([]);
-    setCurrentPoints([]);
-    setSelectedIndex(null);
-  userDirtyRef.current = true;
+    // If a polygon is selected, delete only that polygon; otherwise reset all
+    if (selectedIndex != null && selectedIndex >= 0 && selectedIndex < polygons.length) {
+      setPolygons(prev => prev.filter((_, i) => i !== selectedIndex));
+      setSelectedIndex(null);
+      setCurrentPoints([]);
+    } else {
+      setPolygons([]);
+      setCurrentPoints([]);
+      setSelectedIndex(null);
+    }
+    userDirtyRef.current = true;
   };
 
   // Fullscreen controls
