@@ -81,9 +81,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   // Prefer explicit initialPolygons, otherwise use stream.polygons if provided
   // Normalize incoming polygons into the internal Array<Polygon> shape
   const initialFromStream = useMemo<Array<Polygon>>(() => {
-    if (initialPolygons !== undefined) {
-      return initialPolygons.map(p => [...p]);
-    }
+    if (initialPolygons && initialPolygons.length) return initialPolygons.map(p => [...p]);
     const sp = stream?.polygons as StreamPolygon[] | Polygon[] | Polygon | undefined;
     if (!sp) return [];
     // If it's a single polygon (array of points)
@@ -155,38 +153,11 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
 
   // Sync from props on first mount or when stream id changes, otherwise don't overwrite user edits
   useEffect(() => {
+    if (initialPolygons && initialPolygons.length) return; // explicit override
+
     const currentStreamId = (stream as any)?.id;
     const sp = stream?.polygons as StreamPolygon[] | Polygon[] | Polygon | undefined;
 
-    // If using initialPolygons, handle updates differently
-    if (initialPolygons !== undefined) {
-      // Only update if the stream ID changed or if we haven't marked it as dirty
-      if (lastStreamIdRef.current !== currentStreamId || !userDirtyRef.current) {
-        lastStreamIdRef.current = currentStreamId;
-        const newPolygons = initialPolygons.map(p => [...p]);
-        if (!deepEqualPolys(polygons, newPolygons)) {
-          setPolygons(newPolygons);
-          setCurrentPoints([]);
-          setSelectedIndex(null);
-          userDirtyRef.current = false; // Reset dirty state when syncing from props
-          
-          // Initialize anomalies from stream polygons if available
-          const sp = stream?.polygons as StreamPolygon[] | undefined;
-          if (Array.isArray(sp) && sp.length > 0 && typeof sp[0] === 'object' && 'anomalyIds' in sp[0]) {
-            const init: Record<number, number[]> = {};
-            sp.forEach((polygon, i) => {
-              if (polygon?.anomalyIds?.length) {
-                init[i] = [...polygon.anomalyIds];
-              }
-            });
-            setPolygonAnomalies(init);
-          }
-        }
-      }
-      return;
-    }
-
-    // Original logic for stream.polygons
     // Normalize incoming
     const toPolys = (): Array<Polygon> => {
       if (!sp) return [];
@@ -461,7 +432,8 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
       const newIdx = enableMultiplePolygons ? nextPolys.length - 1 : 0;
   setSelectedIndex(newIdx);
   emitSelectedChange(newIdx);
-      // Keep drawing enabled so user can continue drawing more polygons
+      // Disable draw to simplify UX and let user immediately map anomalies
+      setDrawingEnabled(false);
         return;
       }
     }
