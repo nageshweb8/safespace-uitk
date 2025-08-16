@@ -22,12 +22,15 @@ export interface LiveFeedViewerProps {
   ) => void;
   // New detailed callback: provides per-polygon metadata
   onPolygonDetails?: (polygons: StreamPolygon[]) => void;
+  // Save callback: emits only the selected polygon when Save is clicked
+  onSaveSelectedPolygon?: (polygon: StreamPolygon | null) => void;
   // Controls which action buttons/toggles are visible
   showControls?: {
     draw?: boolean;
     viewer?: boolean;
     reset?: boolean;
     fullscreen?: boolean;
+    save?: boolean;
   };
 }
 
@@ -48,6 +51,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   initialPolygons,
   onPolygonsChange,
   onPolygonDetails,
+  onSaveSelectedPolygon,
   showControls,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -86,6 +90,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   const [polygons, setPolygons] = useState<Array<Array<NormalizedPoint>>>(initialFromStream);
   const [currentPoints, setCurrentPoints] = useState<Array<NormalizedPoint>>([]);
   const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   // Deep compare helper for polygons
   const deepEqualPolys = useCallback((a: Array<Polygon>, b: Array<Polygon>) => {
@@ -189,6 +194,8 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
 
   const stroke = 'rgba(0,255,0,1)';
     const activeStroke = 'rgba(255,255,0,1)';
+    const selectedStroke = 'rgba(0,214,255,1)';
+    const selectedFill = 'rgba(0,214,255,0.12)';
 
     // helper
   const px = (p: NormalizedPoint) => ({ x: p.x * size.width, y: p.y * size.height });
@@ -213,8 +220,16 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
       }
       ctx.closePath();
   const color = baseList[idx]?.color || stroke;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      // Highlight selected polygon differently
+      if (selectedIndex === idx) {
+        ctx.fillStyle = selectedFill;
+        ctx.fill();
+        ctx.strokeStyle = selectedStroke;
+        ctx.lineWidth = 3;
+      } else {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+      }
       ctx.stroke();
     });
 
@@ -239,7 +254,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
       ctx.fillStyle = 'rgba(255,255,0,0.9)';
       ctx.fill();
     }
-  }, [polygons, currentPoints, size.width, size.height]);
+  }, [polygons, currentPoints, size.width, size.height, selectedIndex, stream?.polygons]);
 
   // Notify changes in both legacy and detailed shapes
   useEffect(() => {
@@ -264,15 +279,44 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   }, [polygons, onPolygonsChange, onPolygonDetails]);
 
   // Pointer handling on canvas
+  // Point-in-polygon helper (ray casting) using normalized coordinates
+  const isPointInPolygon = useCallback(
+    (pt: NormalizedPoint, poly: Array<NormalizedPoint>) => {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].x, yi = poly[i].y;
+        const xj = poly[j].x, yj = poly[j].y;
+        const intersect = yi > pt.y !== yj > pt.y && pt.x < ((xj - xi) * (pt.y - yi)) / (yj - yi + 0.0000001) + xi;
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    },
+    []
+  );
+
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!drawingEnabled || !enabled) return;
+    if (!enabled) return;
     const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
     const pointPx = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const point = {
       x: size.width ? pointPx.x / size.width : 0,
       y: size.height ? pointPx.y / size.height : 0,
     };
+    // Selection mode when drawing is disabled
+    if (!drawingEnabled) {
+      let found: number | null = null;
+      for (let i = polygons.length - 1; i >= 0; i--) {
+        const poly = polygons[i];
+        if (poly.length >= 3 && isPointInPolygon(point, poly)) {
+          found = i;
+          break;
+        }
+      }
+      setSelectedIndex(found);
+      return;
+    }
 
+    // Drawing mode
     // close when near first point
     if (currentPoints.length > 2) {
       const firstPx = {
@@ -296,6 +340,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   const handleReset = () => {
     setPolygons([]);
     setCurrentPoints([]);
+    setSelectedIndex(null);
   userDirtyRef.current = true;
   };
 
@@ -324,6 +369,32 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
     viewer: showControls?.viewer ?? true,
     reset: showControls?.reset ?? true,
     fullscreen: showControls?.fullscreen ?? true,
+    save: showControls?.save ?? true,
+  };
+
+  // Save only the selected polygon
+  const handleSaveSelected = () => {
+    if (!onSaveSelectedPolygon) return;
+    if (selectedIndex == null || selectedIndex < 0 || selectedIndex >= polygons.length) {
+      onSaveSelectedPolygon(null);
+      return;
+    }
+    // Normalize base polygons to optionally reuse id/label/color
+    const basePolys = stream?.polygons as StreamPolygon[] | Polygon[] | Polygon | undefined;
+    const baseList: StreamPolygon[] = Array.isArray(basePolys) && basePolys.length && !Array.isArray((basePolys as any)[0])
+      ? [{ points: basePolys as Polygon }]
+      : Array.isArray(basePolys) && Array.isArray((basePolys as any)[0])
+        ? (basePolys as Polygon[]).map(p => ({ points: p }))
+        : (basePolys as StreamPolygon[]) || [];
+    const points = polygons[selectedIndex];
+    const base = baseList[selectedIndex] || {};
+    const detailed: StreamPolygon = {
+      id: base.id ?? String(selectedIndex + 1),
+      label: base.label,
+      color: base.color,
+      points,
+    } as StreamPolygon;
+    onSaveSelectedPolygon(detailed);
   };
 
   return (
@@ -348,6 +419,13 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
           )}
           {controlsVisible.reset && (
             <Button size="small" onClick={handleReset} disabled={!enabled} icon={<ReloadOutlined />}>Reset</Button>
+          )}
+          {controlsVisible.save && (
+            <Tooltip title={selectedIndex == null ? 'Select a polygon (turn off Draw) to enable Save' : 'Save selected polygon'}>
+              <Button size="small" type="primary" onClick={handleSaveSelected} disabled={!enabled || selectedIndex == null}>
+                Save
+              </Button>
+            </Tooltip>
           )}
           {controlsVisible.fullscreen && (
             <Tooltip title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}>
@@ -375,7 +453,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
             <canvas
               ref={canvasRef}
               className="absolute inset-0"
-              style={{ pointerEvents: canDraw ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : 'default' }}
+              style={{ pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }}
               onClick={handleCanvasClick}
             />
           </>
