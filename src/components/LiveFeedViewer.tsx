@@ -81,7 +81,9 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   // Prefer explicit initialPolygons, otherwise use stream.polygons if provided
   // Normalize incoming polygons into the internal Array<Polygon> shape
   const initialFromStream = useMemo<Array<Polygon>>(() => {
-    if (initialPolygons && initialPolygons.length) return initialPolygons.map(p => [...p]);
+    if (initialPolygons !== undefined) {
+      return initialPolygons.map(p => [...p]);
+    }
     const sp = stream?.polygons as StreamPolygon[] | Polygon[] | Polygon | undefined;
     if (!sp) return [];
     // If it's a single polygon (array of points)
@@ -153,11 +155,38 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
 
   // Sync from props on first mount or when stream id changes, otherwise don't overwrite user edits
   useEffect(() => {
-    if (initialPolygons && initialPolygons.length) return; // explicit override
-
     const currentStreamId = (stream as any)?.id;
     const sp = stream?.polygons as StreamPolygon[] | Polygon[] | Polygon | undefined;
 
+    // If using initialPolygons, handle updates differently
+    if (initialPolygons !== undefined) {
+      // Only update if the stream ID changed or if we haven't marked it as dirty
+      if (lastStreamIdRef.current !== currentStreamId || !userDirtyRef.current) {
+        lastStreamIdRef.current = currentStreamId;
+        const newPolygons = initialPolygons.map(p => [...p]);
+        if (!deepEqualPolys(polygons, newPolygons)) {
+          setPolygons(newPolygons);
+          setCurrentPoints([]);
+          setSelectedIndex(null);
+          userDirtyRef.current = false; // Reset dirty state when syncing from props
+          
+          // Initialize anomalies from stream polygons if available
+          const sp = stream?.polygons as StreamPolygon[] | undefined;
+          if (Array.isArray(sp) && sp.length > 0 && typeof sp[0] === 'object' && 'anomalyIds' in sp[0]) {
+            const init: Record<number, number[]> = {};
+            sp.forEach((polygon, i) => {
+              if (polygon?.anomalyIds?.length) {
+                init[i] = [...polygon.anomalyIds];
+              }
+            });
+            setPolygonAnomalies(init);
+          }
+        }
+      }
+      return;
+    }
+
+    // Original logic for stream.polygons
     // Normalize incoming
     const toPolys = (): Array<Polygon> => {
       if (!sp) return [];
@@ -432,8 +461,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
       const newIdx = enableMultiplePolygons ? nextPolys.length - 1 : 0;
   setSelectedIndex(newIdx);
   emitSelectedChange(newIdx);
-      // Disable draw to simplify UX and let user immediately map anomalies
-      setDrawingEnabled(false);
+      // Keep drawing enabled so user can continue drawing more polygons
         return;
       }
     }
@@ -590,7 +618,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
       {!isExpanded && (
         <div
           ref={containerRef}
-          className="relative w-full overflow-hidden rounded-md bg-black"
+          className="relative w-full overflow-hidden rounded-md bg-black isolate"
           style={{ aspectRatio: '16 / 9' }}
         >
           {enabled ? (
@@ -600,12 +628,12 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
                 autoPlay={true}
                 muted={true}
                 controls={false}
-                className="w-full h-full"
+                className="w-full h-full z-0"
               />
               {/* Drawing overlay (canvas) */}
               <canvas
                 ref={canvasRef}
-                className="absolute inset-0"
+                className="absolute inset-0 z-10"
                 style={{ pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }}
                 onClick={handleCanvasClick}
               />
@@ -628,7 +656,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
         width={'90vw'}
         style={{ top: 24 }}
         styles={{ body: { padding: 16 } }}
-        destroyOnHidden
+        destroyOnClose
       >
         <div className="flex items-center justify-between mb-3">
           <div>
@@ -667,7 +695,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
         </div>
         <div
           ref={containerRef}
-          className="relative w-full overflow-hidden rounded-md bg-black"
+          className="relative w-full overflow-hidden rounded-md bg-black isolate"
           style={{ aspectRatio: '16 / 9' }}
         >
           {enabled ? (
@@ -677,11 +705,11 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
                 autoPlay={true}
                 muted={true}
                 controls={false}
-                className="w-full h-full"
+                className="w-full h-full z-0"
               />
               <canvas
                 ref={canvasRef}
-                className="absolute inset-0"
+                className="absolute inset-0 z-10"
                 style={{ pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }}
                 onClick={handleCanvasClick}
               />
