@@ -22,6 +22,7 @@ export interface StreamPolygon {
     label?: string;
     color?: string;
     points: Polygon;
+    anomalyIds?: number[];
 }
 export interface VideoPlayerProps {
     stream: CameraStream;

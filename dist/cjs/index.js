@@ -332,12 +332,14 @@ function distance(a, b) {
     const dy = a.y - b.y;
     return Math.sqrt(dx * dx + dy * dy);
 }
-const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitle = 'Draw polygons (lines only) on live video', defaultEnabled = true, enableMultiplePolygons = true, initialPolygons, onPolygonsChange, onPolygonDetails, showControls, }) => {
+const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitle = 'Draw polygons (lines only) on live video', defaultEnabled = true, enableMultiplePolygons = true, initialPolygons, onPolygonsChange, onPolygonDetails, onSaveSelectedPolygon, anomalyCatalog, 
+// onAnomalyChange,
+selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
     const containerRef = React.useRef(null);
     const canvasRef = React.useRef(null);
     const [enabled, setEnabled] = React.useState(defaultEnabled);
     const [drawingEnabled, setDrawingEnabled] = React.useState(true);
-    const [isFullscreen, setIsFullscreen] = React.useState(false);
+    const [isExpanded, setIsExpanded] = React.useState(false);
     // Track whether the user has locally edited polygons so we don't overwrite from props
     const userDirtyRef = React.useRef(false);
     // Track last stream id to reset dirty state when switching cameras
@@ -370,6 +372,34 @@ const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitl
     const [polygons, setPolygons] = React.useState(initialFromStream);
     const [currentPoints, setCurrentPoints] = React.useState([]);
     const [size, setSize] = React.useState({ width: 0, height: 0 });
+    const [selectedIndex, setSelectedIndex] = React.useState(null);
+    // Track anomalies by polygon index
+    const [polygonAnomalies, setPolygonAnomalies] = React.useState({});
+    // Emit selection change to parent with details
+    const emitSelectedChange = React.useCallback((idx) => {
+        if (!onSelectionChange)
+            return;
+        if (idx == null || idx < 0 || idx >= polygons.length) {
+            onSelectionChange(null, null);
+            return;
+        }
+        // Build details based on current state and base metadata
+        const basePolys = stream?.polygons;
+        const baseList = Array.isArray(basePolys) && basePolys.length && !Array.isArray(basePolys[0])
+            ? [{ points: basePolys }]
+            : Array.isArray(basePolys) && Array.isArray(basePolys[0])
+                ? basePolys.map(p => ({ points: p }))
+                : basePolys || [];
+        const base = baseList[idx] || {};
+        const detailed = {
+            id: base.id ?? '0',
+            label: base.label,
+            color: base.color,
+            points: polygons[idx],
+            anomalyIds: polygonAnomalies[idx] ?? base.anomalyIds,
+        };
+        onSelectionChange(idx, detailed);
+    }, [onSelectionChange, polygons, polygonAnomalies, stream?.polygons]);
     // Deep compare helper for polygons
     const deepEqualPolys = React.useCallback((a, b) => {
         if (a === b)
@@ -421,6 +451,19 @@ const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitl
             const next = toPolys();
             setPolygons(next);
             setCurrentPoints([]);
+            setSelectedIndex(null);
+            // Initialize anomalies from stream polygons if present
+            const base = (Array.isArray(sp)
+                ? (Array.isArray(sp[0])
+                    ? sp.map(p => ({ points: p }))
+                    : sp)
+                : []);
+            const init = {};
+            base.forEach((bp, i) => {
+                if (bp?.anomalyIds?.length)
+                    init[i] = [...bp.anomalyIds];
+            });
+            setPolygonAnomalies(init);
             return;
         }
         // If user hasn't edited, keep in sync only when the shapes actually changed (deep compare)
@@ -429,6 +472,14 @@ const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitl
             if (!deepEqualPolys(polygons, next)) {
                 setPolygons(next);
                 setCurrentPoints([]);
+                // Best-effort keep anomaly mapping size in sync; preserve existing indices where possible
+                setPolygonAnomalies(prev => {
+                    const out = {};
+                    for (let i = 0; i < next.length; i++)
+                        if (prev[i])
+                            out[i] = prev[i];
+                    return out;
+                });
             }
         }
     }, [stream?.polygons, stream?.id, initialPolygons, polygons, deepEqualPolys]);
@@ -459,6 +510,11 @@ const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitl
         window.addEventListener('resize', onResize);
         return () => window.removeEventListener('resize', onResize);
     }, [recalcSize]);
+    // Recalc after expanding when DOM is ready
+    React.useEffect(() => {
+        const t = setTimeout(() => recalcSize(), 0);
+        return () => clearTimeout(t);
+    }, [isExpanded, recalcSize]);
     // Redraw on changes
     React.useEffect(() => {
         const canvas = canvasRef.current;
@@ -471,6 +527,8 @@ const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitl
         ctx.clearRect(0, 0, size.width, size.height);
         const stroke = 'rgba(0,255,0,1)';
         const activeStroke = 'rgba(255,255,0,1)';
+        const selectedStroke = 'rgba(0,214,255,1)';
+        const selectedFill = 'rgba(0,214,255,0.12)';
         // helper
         const px = (p) => ({ x: p.x * size.width, y: p.y * size.height });
         // Normalize base polygons (from props) to access optional color per index
@@ -493,9 +551,48 @@ const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitl
             }
             ctx.closePath();
             const color = baseList[idx]?.color || stroke;
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
+            // Highlight selected polygon differently
+            if (selectedIndex === idx) {
+                ctx.fillStyle = selectedFill;
+                ctx.fill();
+                ctx.strokeStyle = selectedStroke;
+                ctx.lineWidth = 3;
+            }
+            else {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+            }
             ctx.stroke();
+            // Draw anomaly labels (top-right of polygon bbox) if there are anomalyIds
+            const label = anomalyLabelForIndex(idx);
+            if (label) {
+                // compute top-right of polygon bounding box
+                let minY = Infinity, maxX = -Infinity;
+                for (const p of poly) {
+                    const x = p.x * size.width;
+                    const y = p.y * size.height;
+                    if (y < minY)
+                        minY = y;
+                    if (x > maxX)
+                        maxX = x;
+                }
+                const cpx = maxX; // right
+                const cpy = minY; // top
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                // text background
+                const metrics = ctx.measureText(label);
+                const padX = 6, padY = 3;
+                const textW = metrics.width;
+                const textH = 14;
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.beginPath();
+                ctx.rect(cpx + 8, cpy - 8, textW + padX * 2, textH + padY * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.fillText(label, cpx + 8 + padX, cpy - 8 + padY);
+            }
         });
         // active polyline
         if (currentPoints.length) {
@@ -517,7 +614,7 @@ const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitl
             ctx.fillStyle = 'rgba(255,255,0,0.9)';
             ctx.fill();
         }
-    }, [polygons, currentPoints, size.width, size.height]);
+    }, [polygons, currentPoints, size.width, size.height, selectedIndex, stream?.polygons]);
     // Notify changes in both legacy and detailed shapes
     React.useEffect(() => {
         onPolygonsChange?.(polygons);
@@ -531,17 +628,30 @@ const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitl
         const detailed = polygons.map((points, idx) => {
             const base = baseList[idx] || {};
             return {
-                id: base.id ?? String(idx + 1),
+                id: base.id ?? '0',
                 label: base.label,
                 color: base.color,
                 points,
+                anomalyIds: base.anomalyIds ?? polygonAnomalies[idx],
             };
         });
         onPolygonDetails?.(detailed);
-    }, [polygons, onPolygonsChange, onPolygonDetails]);
+    }, [polygons, polygonAnomalies, onPolygonsChange, onPolygonDetails]);
     // Pointer handling on canvas
+    // Point-in-polygon helper (ray casting) using normalized coordinates
+    const isPointInPolygon = React.useCallback((pt, poly) => {
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            const xi = poly[i].x, yi = poly[i].y;
+            const xj = poly[j].x, yj = poly[j].y;
+            const intersect = yi > pt.y !== yj > pt.y && pt.x < ((xj - xi) * (pt.y - yi)) / (yj - yi + 0.0000001) + xi;
+            if (intersect)
+                inside = !inside;
+        }
+        return inside;
+    }, []);
     const handleCanvasClick = (e) => {
-        if (!drawingEnabled || !enabled)
+        if (!enabled)
             return;
         const rect = e.target.getBoundingClientRect();
         const pointPx = { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -549,6 +659,21 @@ const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitl
             x: size.width ? pointPx.x / size.width : 0,
             y: size.height ? pointPx.y / size.height : 0,
         };
+        // Selection mode when drawing is disabled
+        if (!drawingEnabled) {
+            let found = null;
+            for (let i = polygons.length - 1; i >= 0; i--) {
+                const poly = polygons[i];
+                if (poly.length >= 3 && isPointInPolygon(point, poly)) {
+                    found = i;
+                    break;
+                }
+            }
+            setSelectedIndex(found);
+            emitSelectedChange(found);
+            return;
+        }
+        // Drawing mode
         // close when near first point
         if (currentPoints.length > 2) {
             const firstPx = {
@@ -561,6 +686,12 @@ const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitl
                 setPolygons(nextPolys);
                 setCurrentPoints([]);
                 userDirtyRef.current = true;
+                // Auto-select the most recently completed polygon
+                const newIdx = enableMultiplePolygons ? nextPolys.length - 1 : 0;
+                setSelectedIndex(newIdx);
+                emitSelectedChange(newIdx);
+                // Disable draw to simplify UX and let user immediately map anomalies
+                setDrawingEnabled(false);
                 return;
             }
         }
@@ -568,37 +699,114 @@ const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitl
         setCurrentPoints((prev) => [...prev, point]);
     };
     const handleReset = () => {
-        setPolygons([]);
-        setCurrentPoints([]);
-        userDirtyRef.current = true;
-    };
-    // Fullscreen controls
-    const toggleFullscreen = async () => {
-        const el = containerRef.current;
-        if (!el)
-            return;
-        if (!document.fullscreenElement) {
-            await el.requestFullscreen();
-            setIsFullscreen(true);
+        // If a polygon is selected, delete only that polygon; otherwise reset all
+        if (selectedIndex != null && selectedIndex >= 0 && selectedIndex < polygons.length) {
+            // collect id for selected polygon
+            const basePolys = stream?.polygons;
+            const baseList = Array.isArray(basePolys) && basePolys.length && !Array.isArray(basePolys[0])
+                ? [{ points: basePolys }]
+                : Array.isArray(basePolys) && Array.isArray(basePolys[0])
+                    ? basePolys.map(p => ({ points: p }))
+                    : basePolys || [];
+            const base = baseList[selectedIndex] || {};
+            const removedId = base.id ?? String(selectedIndex + 1);
+            setPolygons(prev => prev.filter((_, i) => i !== selectedIndex));
+            setPolygonAnomalies(prev => {
+                const next = {};
+                Object.keys(prev).forEach(k => {
+                    const i = Number(k);
+                    if (i < selectedIndex)
+                        next[i] = prev[i];
+                    else if (i > selectedIndex)
+                        next[i - 1] = prev[i];
+                });
+                return next;
+            });
+            setSelectedIndex(null);
+            setCurrentPoints([]);
+            onReset?.({ mode: 'selected', ids: [removedId] });
         }
         else {
-            await document.exitFullscreen();
-            setIsFullscreen(false);
+            // collect all ids
+            const basePolys = stream?.polygons;
+            const baseList = Array.isArray(basePolys) && basePolys.length && !Array.isArray(basePolys[0])
+                ? [{ points: basePolys }]
+                : Array.isArray(basePolys) && Array.isArray(basePolys[0])
+                    ? basePolys.map(p => ({ points: p }))
+                    : basePolys || [];
+            const ids = polygons.map((_, idx) => (baseList[idx]?.id ?? '0'));
+            setPolygons([]);
+            setCurrentPoints([]);
+            setSelectedIndex(null);
+            setPolygonAnomalies({});
+            if (ids.length)
+                onReset?.({ mode: 'all', ids });
         }
+        userDirtyRef.current = true;
     };
-    React.useEffect(() => {
-        const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
-        document.addEventListener('fullscreenchange', onChange);
-        return () => document.removeEventListener('fullscreenchange', onChange);
-    }, []);
+    // Expand controls handled via Modal
     const canDraw = enabled && drawingEnabled;
     const controlsVisible = {
         draw: showControls?.draw ?? true,
         viewer: showControls?.viewer ?? true,
         reset: showControls?.reset ?? true,
-        fullscreen: showControls?.fullscreen ?? true,
+        fullscreen: showControls?.fullscreen ?? true, // re-used as Expand visibility
+        save: showControls?.save ?? true,
     };
-    return (jsxRuntime.jsxs(antd.Card, { className: cn('w-full h-full', className), bodyStyle: { padding: 16 }, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: setDrawingEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: toggleFullscreen, icon: isFullscreen ? jsxRuntime.jsx(icons.FullscreenExitOutlined, {}) : jsxRuntime.jsx(icons.FullscreenOutlined, {}) }) }))] })] }), jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0", style: { pointerEvents: canDraw ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : 'default' }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })] }));
+    // Save only the selected polygon
+    const handleSaveSelected = () => {
+        if (!onSaveSelectedPolygon)
+            return;
+        if (selectedIndex == null || selectedIndex < 0 || selectedIndex >= polygons.length) {
+            onSaveSelectedPolygon(null);
+            return;
+        }
+        // Normalize base polygons to optionally reuse id/label/color
+        const basePolys = stream?.polygons;
+        const baseList = Array.isArray(basePolys) && basePolys.length && !Array.isArray(basePolys[0])
+            ? [{ points: basePolys }]
+            : Array.isArray(basePolys) && Array.isArray(basePolys[0])
+                ? basePolys.map(p => ({ points: p }))
+                : basePolys || [];
+        const points = polygons[selectedIndex];
+        const base = baseList[selectedIndex] || {};
+        const detailed = {
+            id: base.id ?? '0',
+            label: base.label,
+            color: base.color,
+            points,
+            anomalyIds: polygonAnomalies[selectedIndex] ?? base.anomalyIds,
+        };
+        onSaveSelectedPolygon(detailed);
+    };
+    // Helper to get anomaly names label for overlay
+    const anomalyLabelForIndex = (idx) => {
+        const ids = polygonAnomalies[idx] ?? (Array.isArray(stream?.polygons) && (stream?.polygons)[idx]?.anomalyIds);
+        if (!ids || !ids.length)
+            return '';
+        const names = ids
+            .map(id => {
+            const found = (Array.isArray(anomalyCatalog) ? anomalyCatalog : []).find((a) => a.anomalyId === id);
+            return found?.anomalyName || String(id);
+        })
+            .filter(Boolean);
+        return names.join(', ');
+    };
+    // When parent provides controlled anomaly IDs for selected polygon, sync them in
+    React.useEffect(() => {
+        if (selectedIndex == null)
+            return;
+        if (!selectedPolygonAnomalyIds)
+            return;
+        setPolygonAnomalies(prev => ({ ...prev, [selectedIndex]: [...selectedPolygonAnomalyIds] }));
+    }, [selectedPolygonAnomalyIds, selectedIndex]);
+    // Expose a setter for anomalies of the selected polygon
+    // const setSelectedPolygonAnomalies = (ids: number[]) => {
+    //   if (selectedIndex == null) return;
+    //   setPolygonAnomalies(prev => ({ ...prev, [selectedIndex]: [...ids] }));
+    //   onAnomalyChange?.(selectedIndex, ids);
+    // };
+    return (jsxRuntime.jsxs(antd.Card, { className: cn('w-full h-full', className), styles: { body: { padding: 16 } }, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: setDrawingEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.save && (jsxRuntime.jsx(antd.Tooltip, { title: selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon', children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveSelected, disabled: !enabled || selectedIndex == null, children: "Save" }) })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: isExpanded ? 'Collapse' : 'Expand', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: () => setIsExpanded(v => !v), icon: isExpanded ? jsxRuntime.jsx(icons.ShrinkOutlined, {}) : jsxRuntime.jsx(icons.ArrowsAltOutlined, {}) }) }))] })] }), !isExpanded && (jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0", style: { pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })), jsxRuntime.jsxs(antd.Modal, { open: isExpanded, onCancel: () => setIsExpanded(false), footer: null, width: '90vw', style: { top: 24 }, styles: { body: { padding: 16 } }, destroyOnHidden: true, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: setDrawingEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.save && (jsxRuntime.jsx(antd.Tooltip, { title: selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon', children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveSelected, disabled: !enabled || selectedIndex == null, children: "Save" }) })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: 'Collapse', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: () => setIsExpanded(false), icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}) }) }))] })] }), jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0", style: { pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })] })] }));
 };
 
 const defaultTheme = {

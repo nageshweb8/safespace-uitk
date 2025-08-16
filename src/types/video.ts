@@ -30,6 +30,8 @@ export interface StreamPolygon {
   label?: string;
   color?: string; // optional preferred color for stroke/fill
   points: Polygon; // normalized [0..1]
+  // Optional anomalies associated with this polygon
+  anomalyIds?: number[];
 }
 
 export interface VideoPlayerProps {

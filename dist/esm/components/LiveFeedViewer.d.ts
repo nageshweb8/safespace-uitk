@@ -10,11 +10,25 @@ export interface LiveFeedViewerProps {
     initialPolygons?: Array<Array<NormalizedPoint>>;
     onPolygonsChange?: (polygons: Array<Array<NormalizedPoint>>) => void;
     onPolygonDetails?: (polygons: StreamPolygon[]) => void;
+    onSaveSelectedPolygon?: (polygon: StreamPolygon | null) => void;
+    anomalyCatalog?: Array<{
+        anomalyId: number;
+        anomalyName: string;
+        anomalySelected?: boolean;
+    }>;
+    onAnomalyChange?: (polygonIndex: number, anomalyIds: number[]) => void;
+    selectedPolygonAnomalyIds?: number[];
+    onSelectionChange?: (index: number | null, polygon: StreamPolygon | null) => void;
+    onReset?: (args: {
+        mode: 'selected' | 'all';
+        ids: string[];
+    }) => void;
     showControls?: {
         draw?: boolean;
         viewer?: boolean;
         reset?: boolean;
         fullscreen?: boolean;
+        save?: boolean;
     };
 }
 export declare const LiveFeedViewer: React.FC<LiveFeedViewerProps>;
