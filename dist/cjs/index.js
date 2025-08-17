@@ -332,44 +332,17 @@ function distance(a, b) {
     const dy = a.y - b.y;
     return Math.sqrt(dx * dx + dy * dy);
 }
-const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitle = 'Draw polygons (lines only) on live video', defaultEnabled = true, enableMultiplePolygons = true, initialPolygons, onPolygonsChange, onPolygonDetails, onSaveSelectedPolygon, anomalyCatalog, 
+const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitle = 'Draw polygons (lines only) on live video', defaultEnabled = true, defaultDrawEnabled = false, enableMultiplePolygons = true, initialPolygons, onPolygonsChange, onPolygonDetails, onSaveSelectedPolygon, anomalyCatalog, 
 // onAnomalyChange,
 selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
     const containerRef = React.useRef(null);
     const canvasRef = React.useRef(null);
     const [enabled, setEnabled] = React.useState(defaultEnabled);
-    const [drawingEnabled, setDrawingEnabled] = React.useState(true);
+    const [drawingEnabled, setDrawingEnabled] = React.useState(defaultDrawEnabled);
     const [isExpanded, setIsExpanded] = React.useState(false);
     // Track whether the user has locally edited polygons so we don't overwrite from props
     const userDirtyRef = React.useRef(false);
-    // Track last stream id to reset dirty state when switching cameras
-    const lastStreamIdRef = React.useRef(stream?.id);
-    // Prefer explicit initialPolygons, otherwise use stream.polygons if provided
-    // Normalize incoming polygons into the internal Array<Polygon> shape
-    const initialFromStream = React.useMemo(() => {
-        if (initialPolygons && initialPolygons.length)
-            return initialPolygons.map(p => [...p]);
-        const sp = stream?.polygons;
-        if (!sp)
-            return [];
-        // If it's a single polygon (array of points)
-        if (Array.isArray(sp) && sp.length && !Array.isArray(sp[0])) {
-            const maybePoints = sp;
-            if (maybePoints.length && typeof maybePoints[0] === 'object' && 'x' in maybePoints[0] && 'y' in maybePoints[0]) {
-                return [maybePoints.map(p => ({ ...p }))];
-            }
-        }
-        // If it's an array of polygons without metadata
-        if (Array.isArray(sp) && sp.length && Array.isArray(sp[0])) {
-            return sp.map(poly => poly.map(p => ({ ...p })));
-        }
-        // If it's StreamPolygon[]
-        if (Array.isArray(sp)) {
-            return sp.map(p => [...p.points]);
-        }
-        return [];
-    }, [initialPolygons, stream?.polygons]);
-    const [polygons, setPolygons] = React.useState(initialFromStream);
+    const [polygons, setPolygons] = React.useState([]);
     const [currentPoints, setCurrentPoints] = React.useState([]);
     const [size, setSize] = React.useState({ width: 0, height: 0 });
     const [selectedIndex, setSelectedIndex] = React.useState(null);
@@ -401,88 +374,53 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
         onSelectionChange(idx, detailed);
     }, [onSelectionChange, polygons, polygonAnomalies, stream?.polygons]);
     // Deep compare helper for polygons
-    const deepEqualPolys = React.useCallback((a, b) => {
-        if (a === b)
-            return true;
-        if (!a || !b || a.length !== b.length)
-            return false;
-        for (let i = 0; i < a.length; i++) {
-            const pa = a[i];
-            const pb = b[i];
-            if (!pa || !pb || pa.length !== pb.length)
-                return false;
-            for (let j = 0; j < pa.length; j++) {
-                const p1 = pa[j];
-                const p2 = pb[j];
-                if (!p1 || !p2 || p1.x !== p2.x || p1.y !== p2.y)
-                    return false;
-            }
-        }
-        return true;
-    }, []);
+    // const deepEqualPolys = useCallback((a: Array<Polygon>, b: Array<Polygon>) => {
+    //   if (a === b) return true;
+    //   if (!a || !b || a.length !== b.length) return false;
+    //   for (let i = 0; i < a.length; i++) {
+    //     const pa = a[i];
+    //     const pb = b[i];
+    //     if (!pa || !pb || pa.length !== pb.length) return false;
+    //     for (let j = 0; j < pa.length; j++) {
+    //       const p1 = pa[j];
+    //       const p2 = pb[j];
+    //       if (!p1 || !p2 || p1.x !== p2.x || p1.y !== p2.y) return false;
+    //     }
+    //   }
+    //   return true;
+    // }, []);
     // Sync from props on first mount or when stream id changes, otherwise don't overwrite user edits
     React.useEffect(() => {
-        if (initialPolygons && initialPolygons.length)
-            return; // explicit override
-        const currentStreamId = stream?.id;
-        const sp = stream?.polygons;
-        // Normalize incoming
-        const toPolys = () => {
-            if (!sp)
-                return [];
-            if (Array.isArray(sp) && sp.length && !Array.isArray(sp[0])) {
-                const maybePoints = sp;
-                if (maybePoints.length && typeof maybePoints[0] === 'object') {
-                    return [maybePoints.map(p => ({ ...p }))];
-                }
-            }
-            if (Array.isArray(sp) && sp.length && Array.isArray(sp[0])) {
-                return sp.map(poly => poly.map(p => ({ ...p })));
-            }
-            if (Array.isArray(sp)) {
-                return sp.map(p => [...p.points]);
-            }
-            return [];
-        };
-        // If stream id changed, treat as a fresh source and reset dirty state
-        if (lastStreamIdRef.current !== currentStreamId) {
-            lastStreamIdRef.current = currentStreamId;
-            userDirtyRef.current = false;
-            const next = toPolys();
-            setPolygons(next);
+        // If initialPolygons is explicitly provided, use it
+        if (initialPolygons !== undefined) {
+            setPolygons(initialPolygons.map(poly => poly.map(p => ({ ...p }))));
             setCurrentPoints([]);
             setSelectedIndex(null);
-            // Initialize anomalies from stream polygons if present
-            const base = (Array.isArray(sp)
-                ? (Array.isArray(sp[0])
-                    ? sp.map(p => ({ points: p }))
-                    : sp)
-                : []);
-            const init = {};
-            base.forEach((bp, i) => {
-                if (bp?.anomalyIds?.length)
-                    init[i] = [...bp.anomalyIds];
-            });
-            setPolygonAnomalies(init);
+            setPolygonAnomalies({});
             return;
         }
-        // If user hasn't edited, keep in sync only when the shapes actually changed (deep compare)
-        if (!userDirtyRef.current) {
-            const next = toPolys();
-            if (!deepEqualPolys(polygons, next)) {
-                setPolygons(next);
-                setCurrentPoints([]);
-                // Best-effort keep anomaly mapping size in sync; preserve existing indices where possible
-                setPolygonAnomalies(prev => {
-                    const out = {};
-                    for (let i = 0; i < next.length; i++)
-                        if (prev[i])
-                            out[i] = prev[i];
-                    return out;
-                });
-            }
+        // Otherwise use stream.polygons
+        const sp = stream?.polygons;
+        if (!sp || !Array.isArray(sp)) {
+            setPolygons([]);
+            setCurrentPoints([]);
+            setSelectedIndex(null);
+            setPolygonAnomalies({});
+            return;
         }
-    }, [stream?.polygons, stream?.id, initialPolygons, polygons, deepEqualPolys]);
+        // Extract points from StreamPolygon[]
+        const normalizedPolygons = sp.map(poly => [...poly.points]);
+        const anomalies = {};
+        sp.forEach((poly, i) => {
+            if (poly?.anomalyIds?.length) {
+                anomalies[i] = [...poly.anomalyIds];
+            }
+        });
+        setPolygons(normalizedPolygons);
+        setCurrentPoints([]);
+        setSelectedIndex(null);
+        setPolygonAnomalies(anomalies);
+    }, [stream?.polygons, stream?.id, initialPolygons]);
     const recalcSize = React.useCallback(() => {
         const container = containerRef.current;
         if (!container)
@@ -522,6 +460,9 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
             return;
         const ctx = canvas.getContext('2d');
         if (!ctx)
+            return;
+        // Don't draw if size is not set yet
+        if (size.width <= 0 || size.height <= 0)
             return;
         // clear
         ctx.clearRect(0, 0, size.width, size.height);
@@ -614,7 +555,7 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
             ctx.fillStyle = 'rgba(255,255,0,0.9)';
             ctx.fill();
         }
-    }, [polygons, currentPoints, size.width, size.height, selectedIndex, stream?.polygons]);
+    }, [polygons, currentPoints, size, selectedIndex, stream?.polygons, anomalyCatalog]);
     // Notify changes in both legacy and detailed shapes
     React.useEffect(() => {
         onPolygonsChange?.(polygons);
@@ -673,7 +614,7 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
             emitSelectedChange(found);
             return;
         }
-        // Drawing mode
+        // Drawing mode - only allow when drawing is enabled
         // close when near first point
         if (currentPoints.length > 2) {
             const firstPx = {
@@ -806,7 +747,7 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
     //   setPolygonAnomalies(prev => ({ ...prev, [selectedIndex]: [...ids] }));
     //   onAnomalyChange?.(selectedIndex, ids);
     // };
-    return (jsxRuntime.jsxs(antd.Card, { className: cn('w-full h-full', className), styles: { body: { padding: 16 } }, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: setDrawingEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.save && (jsxRuntime.jsx(antd.Tooltip, { title: selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon', children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveSelected, disabled: !enabled || selectedIndex == null, children: "Save" }) })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: isExpanded ? 'Collapse' : 'Expand', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: () => setIsExpanded(v => !v), icon: isExpanded ? jsxRuntime.jsx(icons.ShrinkOutlined, {}) : jsxRuntime.jsx(icons.ArrowsAltOutlined, {}) }) }))] })] }), !isExpanded && (jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0", style: { pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })), jsxRuntime.jsxs(antd.Modal, { open: isExpanded, onCancel: () => setIsExpanded(false), footer: null, width: '90vw', style: { top: 24 }, styles: { body: { padding: 16 } }, destroyOnHidden: true, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: setDrawingEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.save && (jsxRuntime.jsx(antd.Tooltip, { title: selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon', children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveSelected, disabled: !enabled || selectedIndex == null, children: "Save" }) })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: 'Collapse', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: () => setIsExpanded(false), icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}) }) }))] })] }), jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0", style: { pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })] })] }));
+    return (jsxRuntime.jsxs(antd.Card, { className: cn('w-full h-full', className), styles: { body: { padding: 16 } }, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: setDrawingEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.save && (jsxRuntime.jsx(antd.Tooltip, { title: selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon', children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveSelected, disabled: !enabled || selectedIndex == null, children: "Save" }) })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: isExpanded ? 'Collapse' : 'Expand', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: () => setIsExpanded(v => !v), icon: isExpanded ? jsxRuntime.jsx(icons.ShrinkOutlined, {}) : jsxRuntime.jsx(icons.ArrowsAltOutlined, {}) }) }))] })] }), !isExpanded && (jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black isolate", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full z-0" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0 z-10", style: { pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })), jsxRuntime.jsxs(antd.Modal, { open: isExpanded, onCancel: () => setIsExpanded(false), footer: null, width: '90vw', style: { top: 24 }, styles: { body: { padding: 16 } }, destroyOnClose: true, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: setDrawingEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.save && (jsxRuntime.jsx(antd.Tooltip, { title: selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon', children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveSelected, disabled: !enabled || selectedIndex == null, children: "Save" }) })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: 'Collapse', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: () => setIsExpanded(false), icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}) }) }))] })] }), jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black isolate", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full z-0" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0 z-10", style: { pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })] })] }));
 };
 
 const defaultTheme = {

@@ -6,6 +6,7 @@ export interface LiveFeedViewerProps {
     title?: string;
     subtitle?: string;
     defaultEnabled?: boolean;
+    defaultDrawEnabled?: boolean;
     enableMultiplePolygons?: boolean;
     initialPolygons?: Array<Array<NormalizedPoint>>;
     onPolygonsChange?: (polygons: Array<Array<NormalizedPoint>>) => void;
