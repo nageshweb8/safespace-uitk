@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Card, Switch, Button, Tooltip, Typography, Modal } from 'antd';
 import { ArrowsAltOutlined, ShrinkOutlined, ReloadOutlined } from '@ant-design/icons';
 import { CameraStream, NormalizedPoint, StreamPolygon, Polygon } from '../types/video';
@@ -13,6 +13,7 @@ export interface LiveFeedViewerProps {
   title?: string;
   subtitle?: string;
   defaultEnabled?: boolean; // On/Off toggle default
+  defaultDrawEnabled?: boolean; // Draw toggle default
   enableMultiplePolygons?: boolean; // default true
   // Optional initial polygons override (falls back to stream.polygons)
   initialPolygons?: Array<Array<NormalizedPoint>>;
@@ -57,6 +58,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   title = 'Live Feed Viewer',
   subtitle = 'Draw polygons (lines only) on live video',
   defaultEnabled = true,
+  defaultDrawEnabled = false,
   enableMultiplePolygons = true,
   initialPolygons,
   onPolygonsChange,
@@ -72,37 +74,12 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [enabled, setEnabled] = useState<boolean>(defaultEnabled);
-  const [drawingEnabled, setDrawingEnabled] = useState<boolean>(true);
+  const [drawingEnabled, setDrawingEnabled] = useState<boolean>(defaultDrawEnabled);
   const [isExpanded, setIsExpanded] = useState(false);
   // Track whether the user has locally edited polygons so we don't overwrite from props
   const userDirtyRef = useRef(false);
-  // Track last stream id to reset dirty state when switching cameras
-  const lastStreamIdRef = useRef<string | number | undefined>((stream as any)?.id);
-  // Prefer explicit initialPolygons, otherwise use stream.polygons if provided
-  // Normalize incoming polygons into the internal Array<Polygon> shape
-  const initialFromStream = useMemo<Array<Polygon>>(() => {
-    if (initialPolygons && initialPolygons.length) return initialPolygons.map(p => [...p]);
-    const sp = stream?.polygons as StreamPolygon[] | Polygon[] | Polygon | undefined;
-    if (!sp) return [];
-    // If it's a single polygon (array of points)
-    if (Array.isArray(sp) && sp.length && !Array.isArray((sp as any)[0])) {
-      const maybePoints = sp as unknown as Polygon;
-      if (maybePoints.length && typeof maybePoints[0] === 'object' && 'x' in maybePoints[0] && 'y' in maybePoints[0]) {
-        return [maybePoints.map(p => ({ ...p }))];
-      }
-    }
-    // If it's an array of polygons without metadata
-    if (Array.isArray(sp) && sp.length && Array.isArray((sp as any)[0])) {
-      return (sp as Polygon[]).map(poly => poly.map(p => ({ ...p })));
-    }
-    // If it's StreamPolygon[]
-    if (Array.isArray(sp)) {
-      return (sp as StreamPolygon[]).map(p => [...p.points]);
-    }
-    return [];
-  }, [initialPolygons, stream?.polygons]);
 
-  const [polygons, setPolygons] = useState<Array<Array<NormalizedPoint>>>(initialFromStream);
+  const [polygons, setPolygons] = useState<Array<Array<NormalizedPoint>>>([]);
   const [currentPoints, setCurrentPoints] = useState<Array<NormalizedPoint>>([]);
   const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -135,85 +112,59 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   }, [onSelectionChange, polygons, polygonAnomalies, stream?.polygons]);
 
   // Deep compare helper for polygons
-  const deepEqualPolys = useCallback((a: Array<Polygon>, b: Array<Polygon>) => {
-    if (a === b) return true;
-    if (!a || !b || a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-      const pa = a[i];
-      const pb = b[i];
-      if (!pa || !pb || pa.length !== pb.length) return false;
-      for (let j = 0; j < pa.length; j++) {
-        const p1 = pa[j];
-        const p2 = pb[j];
-        if (!p1 || !p2 || p1.x !== p2.x || p1.y !== p2.y) return false;
-      }
-    }
-    return true;
-  }, []);
+  // const deepEqualPolys = useCallback((a: Array<Polygon>, b: Array<Polygon>) => {
+  //   if (a === b) return true;
+  //   if (!a || !b || a.length !== b.length) return false;
+  //   for (let i = 0; i < a.length; i++) {
+  //     const pa = a[i];
+  //     const pb = b[i];
+  //     if (!pa || !pb || pa.length !== pb.length) return false;
+  //     for (let j = 0; j < pa.length; j++) {
+  //       const p1 = pa[j];
+  //       const p2 = pb[j];
+  //       if (!p1 || !p2 || p1.x !== p2.x || p1.y !== p2.y) return false;
+  //     }
+  //   }
+  //   return true;
+  // }, []);
 
   // Sync from props on first mount or when stream id changes, otherwise don't overwrite user edits
   useEffect(() => {
-    if (initialPolygons && initialPolygons.length) return; // explicit override
-
-    const currentStreamId = (stream as any)?.id;
-    const sp = stream?.polygons as StreamPolygon[] | Polygon[] | Polygon | undefined;
-
-    // Normalize incoming
-    const toPolys = (): Array<Polygon> => {
-      if (!sp) return [];
-      if (Array.isArray(sp) && sp.length && !Array.isArray((sp as any)[0])) {
-        const maybePoints = sp as unknown as Polygon;
-        if (maybePoints.length && typeof maybePoints[0] === 'object') {
-          return [maybePoints.map(p => ({ ...p }))];
-        }
-      }
-      if (Array.isArray(sp) && sp.length && Array.isArray((sp as any)[0])) {
-        return (sp as Polygon[]).map(poly => poly.map(p => ({ ...p })));
-      }
-      if (Array.isArray(sp)) {
-        return (sp as StreamPolygon[]).map(p => [...p.points]);
-      }
-      return [];
-    };
-
-    // If stream id changed, treat as a fresh source and reset dirty state
-    if (lastStreamIdRef.current !== currentStreamId) {
-      lastStreamIdRef.current = currentStreamId;
-      userDirtyRef.current = false;
-      const next = toPolys();
-      setPolygons(next);
+    // If initialPolygons is explicitly provided, use it
+    if (initialPolygons !== undefined) {
+      setPolygons(initialPolygons.map(poly => poly.map(p => ({ ...p }))));
       setCurrentPoints([]);
       setSelectedIndex(null);
-      // Initialize anomalies from stream polygons if present
-      const base = (Array.isArray(sp)
-        ? (Array.isArray((sp as any)[0])
-            ? (sp as Polygon[]).map(p => ({ points: p }))
-            : (sp as any as StreamPolygon[])
-          )
-        : []) as StreamPolygon[];
-      const init: Record<number, number[]> = {};
-      base.forEach((bp, i) => {
-        if (bp?.anomalyIds?.length) init[i] = [...bp.anomalyIds];
-      });
-      setPolygonAnomalies(init);
+      setPolygonAnomalies({});
       return;
     }
 
-    // If user hasn't edited, keep in sync only when the shapes actually changed (deep compare)
-    if (!userDirtyRef.current) {
-      const next = toPolys();
-      if (!deepEqualPolys(polygons, next)) {
-        setPolygons(next);
-        setCurrentPoints([]);
-        // Best-effort keep anomaly mapping size in sync; preserve existing indices where possible
-        setPolygonAnomalies(prev => {
-          const out: Record<number, number[]> = {};
-          for (let i = 0; i < next.length; i++) if (prev[i]) out[i] = prev[i];
-          return out;
-        });
-      }
+    // Otherwise use stream.polygons
+    const sp = stream?.polygons as StreamPolygon[] | undefined;
+    
+    if (!sp || !Array.isArray(sp)) {
+      setPolygons([]);
+      setCurrentPoints([]);
+      setSelectedIndex(null);
+      setPolygonAnomalies({});
+      return;
     }
-  }, [stream?.polygons, stream?.id, initialPolygons, polygons, deepEqualPolys]);
+
+    // Extract points from StreamPolygon[]
+    const normalizedPolygons = sp.map(poly => [...poly.points]);
+    const anomalies: Record<number, number[]> = {};
+    
+    sp.forEach((poly, i) => {
+      if (poly?.anomalyIds?.length) {
+        anomalies[i] = [...poly.anomalyIds];
+      }
+    });
+
+    setPolygons(normalizedPolygons);
+    setCurrentPoints([]);
+    setSelectedIndex(null);
+    setPolygonAnomalies(anomalies);
+  }, [stream?.polygons, stream?.id, initialPolygons]);
 
   const recalcSize = useCallback(() => {
     const container = containerRef.current;
@@ -254,6 +205,9 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    
+    // Don't draw if size is not set yet
+    if (size.width <= 0 || size.height <= 0) return;
 
     // clear
     ctx.clearRect(0, 0, size.width, size.height);
@@ -277,6 +231,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
     // completed polygons
     polygons.forEach((poly, idx) => {
       if (poly.length < 2) return;
+      
       ctx.beginPath();
       const p0 = px(poly[0]);
       ctx.moveTo(p0.x, p0.y);
@@ -351,7 +306,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
       ctx.fillStyle = 'rgba(255,255,0,0.9)';
       ctx.fill();
     }
-  }, [polygons, currentPoints, size.width, size.height, selectedIndex, stream?.polygons]);
+  }, [polygons, currentPoints, size, selectedIndex, stream?.polygons, anomalyCatalog]);
 
   // Notify changes in both legacy and detailed shapes
   useEffect(() => {
@@ -394,12 +349,14 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!enabled) return;
+    
     const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
     const pointPx = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const point = {
       x: size.width ? pointPx.x / size.width : 0,
       y: size.height ? pointPx.y / size.height : 0,
     };
+    
     // Selection mode when drawing is disabled
     if (!drawingEnabled) {
       let found: number | null = null;
@@ -410,36 +367,36 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
           break;
         }
       }
-  setSelectedIndex(found);
-  emitSelectedChange(found);
+      setSelectedIndex(found);
+      emitSelectedChange(found);
       return;
     }
 
-    // Drawing mode
+    // Drawing mode - only allow when drawing is enabled
     // close when near first point
     if (currentPoints.length > 2) {
       const firstPx = {
         x: currentPoints[0].x * size.width,
         y: currentPoints[0].y * size.height,
       };
-    if (distance(pointPx, firstPx) < 12) {
+      if (distance(pointPx, firstPx) < 12) {
         const newPoly = [...currentPoints];
         const nextPolys = enableMultiplePolygons ? [...polygons, newPoly] : [newPoly];
-  setPolygons(nextPolys);
+        setPolygons(nextPolys);
         setCurrentPoints([]);
-    userDirtyRef.current = true;
+        userDirtyRef.current = true;
         // Auto-select the most recently completed polygon
-      const newIdx = enableMultiplePolygons ? nextPolys.length - 1 : 0;
-  setSelectedIndex(newIdx);
-  emitSelectedChange(newIdx);
-      // Disable draw to simplify UX and let user immediately map anomalies
-      setDrawingEnabled(false);
+        const newIdx = enableMultiplePolygons ? nextPolys.length - 1 : 0;
+        setSelectedIndex(newIdx);
+        emitSelectedChange(newIdx);
+        // Disable draw to simplify UX and let user immediately map anomalies
+        setDrawingEnabled(false);
         return;
       }
     }
 
-  userDirtyRef.current = true;
-  setCurrentPoints((prev: Array<NormalizedPoint>) => [...prev, point]);
+    userDirtyRef.current = true;
+    setCurrentPoints((prev: Array<NormalizedPoint>) => [...prev, point]);
   };
 
   const handleReset = () => {
