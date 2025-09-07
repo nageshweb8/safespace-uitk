@@ -9,6 +9,10 @@ export interface CameraStream {
     bitrate?: string;
     location?: string;
     timestamp?: string;
+  // Optional authorization for fetching HLS manifests/segments or other assets
+  // If provided, the VideoPlayer will inject the appropriate headers on all HLS requests
+  // and will prefer using hls.js over native HLS to ensure headers are honored.
+  auth?: AuthConfig;
   };
   // Optional drawing overlay polygons for the stream.
   // Coordinates are normalized (0..1) relative to the video container size
@@ -94,3 +98,18 @@ export interface ThumbnailGridProps {
   layout: 'vertical' | 'horizontal' | 'grid';
   maxVisible?: number;
 }
+
+// Authorization configuration for streams
+export type AuthConfig =
+  | {
+      type: 'basic';
+      username: string;
+      password: string;
+      // When true, include credentials/cookies with requests
+      withCredentials?: boolean;
+    }
+  | {
+      type: 'header';
+      headers: Record<string, string>;
+      withCredentials?: boolean;
+    };

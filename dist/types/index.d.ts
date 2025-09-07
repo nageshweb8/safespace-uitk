@@ -1,8 +1,4 @@
-export * from './components';
-export * from './hooks';
-export { useSafeSpaceTheme } from './components/ThemeProvider';
-export type { CameraStream, VideoPlayerProps, StreamLayoutConfig, VideoControlsProps, StreamInfoProps, ThumbnailGridProps, NormalizedPoint, Polygon, StreamPolygon } from './types/video';
-export type { SafeSpaceTheme } from './types/theme';
-export * from './utils/cn';
-export declare const version = "0.1.4";
+export * from './video';
+export * from './theme';
+export * from './tree';
 //# sourceMappingURL=index.d.ts.map

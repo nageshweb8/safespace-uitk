@@ -159,11 +159,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       return cleanup;
     }
 
-    // HLS flow (unchanged)
+    // HLS flow
     cleanup();
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native HLS support (Safari)
+    // If the stream declares auth headers, we must use hls.js (native HLS can't add headers)
+    const auth = (stream as CameraStream & { metadata?: any })?.metadata?.auth as
+      | { type: 'basic'; username: string; password: string; withCredentials?: boolean }
+      | { type: 'header'; headers: Record<string, string>; withCredentials?: boolean }
+      | undefined;
+    const needsAuthHeaders = !!auth;
+
+    if (!needsAuthHeaders && video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Native HLS support (Safari) when no special headers are needed
       video.src = stream.url;
       onLoadEnd?.();
     } else if (Hls.isSupported()) {
@@ -176,6 +183,43 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         startLevel: -1,
         autoStartLoad: true,
         capLevelToPlayerSize: true,
+        // Provide both xhrSetup and fetchSetup to support either loader and inject auth headers
+        xhrSetup: (xhr: XMLHttpRequest) => {
+          try {
+            if (!auth) return;
+            if (auth.type === 'basic') {
+              const token = btoa(`${auth.username}:${auth.password}`);
+              xhr.setRequestHeader('Authorization', `Basic ${token}`);
+            } else if (auth.type === 'header') {
+              Object.entries(auth.headers || {}).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+            }
+            xhr.withCredentials = !!auth.withCredentials;
+          } catch {
+            // ignore
+          }
+        },
+    fetchSetup: (context: any, initParams?: RequestInit) => {
+          try {
+      if (!auth) return new Request(context?.url ?? stream.url, initParams);
+            const headers = new Headers(initParams?.headers || {});
+            if (auth.type === 'basic') {
+              const token = btoa(`${auth.username}:${auth.password}`);
+              headers.set('Authorization', `Basic ${token}`);
+            } else if (auth.type === 'header') {
+              Object.entries(auth.headers || {}).forEach(([k, v]) => headers.set(k, v));
+            }
+            const reqInit: RequestInit = {
+              ...initParams,
+              headers,
+              credentials: auth.withCredentials ? 'include' : (initParams?.credentials || 'same-origin'),
+              cache: 'no-cache',
+            };
+            // Build and return Request as expected by hls.js types
+            return new Request(context?.url ?? stream.url, reqInit);
+          } catch {
+            return new Request(context?.url ?? stream.url, initParams);
+          }
+        },
       });
 
       hlsRef.current = hls;
