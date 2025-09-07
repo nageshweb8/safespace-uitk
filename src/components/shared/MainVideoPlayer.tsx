@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { Button, Tooltip } from 'antd';
+import { ReloadOutlined, CameraOutlined } from '@ant-design/icons';
 import { CameraStream } from '../../types/video';
 import { VideoPlayer } from '../VideoPlayer';
 import { VideoControls } from './VideoControls';
@@ -21,6 +21,13 @@ export interface MainVideoPlayerProps {
   onRetry: () => void;
   onError: (error: Error) => void;
   className?: string;
+  // Optional capture overlay
+  showCaptureButton?: boolean;
+  captureTooltip?: string;
+  captureIcon?: React.ReactNode;
+  onCaptureClick?: () => void;
+  // Optional: allow parent to access underlying <video>
+  setVideoElRef?: (el: HTMLVideoElement | null) => void;
 }
 
 export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
@@ -36,6 +43,11 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
   onRetry,
   onError,
   className,
+  showCaptureButton,
+  captureTooltip,
+  captureIcon,
+  onCaptureClick,
+  setVideoElRef,
 }) => {
   return (
     <div
@@ -69,6 +81,7 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
             muted={isMuted}
             controls={false}
             onError={onError}
+            refCallback={setVideoElRef}
           />
 
           <StreamInfo stream={stream} showLiveIndicator={true} />
@@ -91,6 +104,20 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
               color="white"
               className="px-3 pb-2"
             />
+          )}
+
+          {showCaptureButton && (
+            <div className="absolute top-3 right-3 z-20">
+              <Tooltip title={captureTooltip || 'Capture frame'}>
+                <button
+                  type="button"
+                  onClick={onCaptureClick}
+                  className="rounded-full bg-white/85 hover:bg-white text-gray-800 p-2 shadow-md transition"
+                >
+                  {captureIcon || <CameraOutlined />}
+                </button>
+              </Tooltip>
+            </div>
           )}
         </>
       )}

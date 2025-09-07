@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 export interface CameraStream {
   id: string;
   url: string;
@@ -44,6 +45,8 @@ export interface VideoPlayerProps {
   onLoadStart?: () => void;
   onLoadEnd?: () => void;
   showOverlay?: boolean;
+  // Optional: expose the internal <video> element for integrations
+  refCallback?: (el: HTMLVideoElement | null) => void;
 }
 
 export interface StreamLayoutConfig {
@@ -68,6 +71,11 @@ export interface LiveFeedPlayerProps {
   maxThumbnails?: number;
   enableFullscreen?: boolean;
   enableKeyboardControls?: boolean;
+  // Capture frame configuration (all optional to preserve BC)
+  showCaptureButton?: boolean; // Render a capture icon overlay on the main video
+  captureIcon?: ReactNode; // Custom icon node
+  captureTooltip?: string; // Tooltip text for the capture icon
+  onCapture?: (payload: CaptureFramePayload) => void; // Callback when a frame is captured (via icon or imperative API)
 }
 
 export interface VideoControlsProps {
@@ -93,4 +101,22 @@ export interface ThumbnailGridProps {
   onFullscreen: () => void;
   layout: 'vertical' | 'horizontal' | 'grid';
   maxVisible?: number;
+}
+
+// Payload returned when capturing a frame from the currently active stream
+export interface CaptureFramePayload {
+  blob: Blob; // Captured image blob (JPEG)
+  objectUrl: string; // URL.createObjectURL for quick preview
+  width: number;
+  height: number;
+  timestamp: number; // Date.now()
+  stream: CameraStream; // The stream that was active when captured
+  contentType: string; // e.g., 'image/jpeg'
+}
+
+// Imperative handle that the LiveFeedPlayer can expose via forwardRef
+export interface LiveFeedPlayerHandle {
+  captureFrame: () => Promise<CaptureFramePayload>;
+  getActiveStream: () => CameraStream | undefined;
+  getVideoElement: () => HTMLVideoElement | null;
 }

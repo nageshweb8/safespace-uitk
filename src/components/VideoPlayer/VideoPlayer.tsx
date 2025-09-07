@@ -13,9 +13,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onLoadStart,
   onLoadEnd,
   showOverlay = false,
+  refCallback,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+
+  // Provide the underlying <video> element to parent if requested
+  useEffect(() => {
+    if (refCallback) refCallback(videoRef.current);
+    return () => {
+      if (refCallback) refCallback(null);
+    };
+  }, [refCallback]);
 
   useEffect(() => {
     const video = videoRef.current;
