@@ -1,3 +1,5 @@
+import { ReactNode } from 'react';
+
 export interface CameraStream {
   id: string;
   url: string;
@@ -44,6 +46,8 @@ export interface VideoPlayerProps {
   onLoadStart?: () => void;
   onLoadEnd?: () => void;
   showOverlay?: boolean;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none';
+  exposeVideoRef?: (video: HTMLVideoElement | null) => void;
 }
 
 export interface StreamLayoutConfig {
@@ -93,4 +97,52 @@ export interface ThumbnailGridProps {
   onFullscreen: () => void;
   layout: 'vertical' | 'horizontal' | 'grid';
   maxVisible?: number;
+}
+
+export type LiveVideoPatternCategory = 'Equal' | 'Highlight' | 'Extreme';
+
+export type LiveVideoPatternKey =
+  | '1'
+  | '4'
+  | '9'
+  | '16'
+  | 'M14'
+  | 'M15'
+  | '6-Highlight'
+  | '8-Highlight'
+  | '10-Highlight'
+  | '12-Highlight'
+  | '16-Highlight'
+  | '20'
+  | '36'
+  | '64';
+
+export interface LiveVideoPatternDefinition {
+  key: LiveVideoPatternKey;
+  label: string;
+  category: LiveVideoPatternCategory;
+  tileCount: number;
+}
+
+export interface LiveVideosProps {
+  streams: CameraStream[];
+  displayStreams?: CameraStream[];
+  loading?: boolean;
+  pattern?: LiveVideoPatternKey;
+  defaultPattern?: LiveVideoPatternKey;
+  autoPattern?: boolean;
+  availablePatterns?: LiveVideoPatternKey[];
+  onPatternChange?: (pattern: LiveVideoPatternKey) => void;
+  onTileClick?: (stream: CameraStream, index: number) => void;
+  onStreamError?: (error: Error, stream: CameraStream) => void;
+  showPatternMenu?: boolean;
+  patternMenuPlacement?: 'top' | 'bottom';
+  showTileLabels?: boolean;
+  showTileControls?: boolean;
+  tileControlsSize?: 'small' | 'medium';
+  autoPlay?: boolean;
+  muted?: boolean;
+  height?: string | number;
+  className?: string;
+  emptyState?: ReactNode;
 }

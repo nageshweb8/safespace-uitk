@@ -13,6 +13,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onLoadStart,
   onLoadEnd,
   showOverlay = false,
+  objectFit = 'cover',
+  exposeVideoRef,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -218,6 +220,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return cleanup;
   }, [stream.url, stream, onError, onLoadStart, onLoadEnd]);
 
+  useEffect(() => {
+    exposeVideoRef?.(videoRef.current);
+    return () => {
+      exposeVideoRef?.(null);
+    };
+  }, [exposeVideoRef]);
+
   const handleVideoError = () => {
     onError?.(new Error('Video playback error'));
   };
@@ -238,7 +247,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         muted={muted}
         controls={controls}
         playsInline
-        className="w-full h-full object-cover"
+        className={cn(
+          'w-full h-full',
+          objectFit === 'contain' && 'object-contain bg-black',
+          objectFit === 'fill' && 'object-fill',
+          objectFit === 'none' && 'object-none',
+          objectFit === 'cover' && 'object-cover'
+        )}
         onError={handleVideoError}
         onLoadStart={handleVideoLoadStart}
         onLoadedData={handleVideoLoadedData}
