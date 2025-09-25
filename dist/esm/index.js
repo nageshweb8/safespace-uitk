@@ -1297,7 +1297,7 @@ const Tree = ({ data, title, titleIcon, searchable = true, searchPlaceholder = '
     return (jsxs("div", { className: cn('bg-white min-w-[260px] h-full px-4 box-border border-r border-gray-300 text-sm text-gray-800', className), style: style, children: [title && (jsx("div", { className: "border-b border-gray-200 mb-2", children: jsxs("div", { className: "px-2 py-2 font-bold text-lg text-[#05162B] flex items-center gap-2", children: [titleIcon ? titleIcon : jsx(HiVideoCamera, { size: 22 }), title] }) })), searchable && (jsx(TreeSearch, { value: searchTerm, onChange: setSearchTerm, placeholder: searchPlaceholder })), jsx("div", { className: "overflow-y-auto max-h-[calc(100vh-140px)] mt-2", children: filteredData.length === 0 ? (jsx("div", { className: "text-gray-500 px-2 py-2 text-sm italic", children: searchTerm ? `No results found` : emptyMessage })) : (jsx("div", { children: filteredData.map(node => (jsx(TreeNodeComponent, { node: node, level: 0, isSelected: internalSelectedKeys.includes(node.key), onLeafClick: handleLeafClick, onNodeToggle: handleNodeToggle, onPinToggle: onPinToggle, onSelectionChange: handleSelectionChange, path: [], searchTerm: searchTerm, highlightSearch: highlightSearch, renderNode: renderNode, showExpandIcons: showExpandIcons, selectable: selectable, forceExpand: searchTerm.length > 0, maxPinnedItems: maxPinnedItems, currentPinnedCount: currentPinnedCount, alwaysShowPinIcons: alwaysShowPinIcons }, node.key))) })) })] }));
 };
 
-const LiveVideoTile = ({ stream, index, isPrimary = false, isPlaying, isMuted, showControls, controlsSize, showLabel, onTogglePlay, onToggleMute, onFullscreen, onClick, onError, className, style, }) => {
+const LiveVideoTile = ({ stream, index, isPrimary = false, isPlaying, isMuted, showControls, controlsSize, showLabel, labelPlacement = 'top', onTogglePlay, onToggleMute, onFullscreen, onClick, onError, className, style, }) => {
     const videoElementRef = useRef(null);
     const hasStream = !!stream && !!stream.url;
     useEffect(() => {
@@ -1327,18 +1327,24 @@ const LiveVideoTile = ({ stream, index, isPrimary = false, isPlaying, isMuted, s
     const handleExposeVideoRef = (video) => {
         videoElementRef.current = video;
     };
-    return (jsxs("div", { className: cn('relative overflow-hidden bg-black rounded-md isolate', isPrimary ? 'shadow-[0_0_0_2px_rgba(67,228,255,0.35)]' : '', className), style: style, onClick: onClick, children: [hasStream ? (jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: false, objectFit: "contain", exposeVideoRef: handleExposeVideoRef, onError: error => {
+    return (jsxs("div", { className: cn('relative overflow-hidden bg-black rounded-md isolate', isPrimary ? 'shadow-[0_0_0_2px_rgba(67,228,255,0.35)]' : '', className), style: style, onClick: onClick, children: [hasStream ? (jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: false, objectFit: "cover", exposeVideoRef: handleExposeVideoRef, onError: error => {
                     if (onError && stream) {
                         onError(error);
                     }
-                } }, stream?.id ?? index)) : (jsx("div", { className: "flex items-center justify-center w-full h-full bg-black text-xs text-gray-300", children: "No Video" })), showLabel && (jsx("div", { className: "absolute top-0 left-0 right-0 flex items-center justify-between px-3 py-1 text-[11px] font-semibold text-white bg-black/55", children: jsx("span", { children: stream?.title || `Camera ${index + 1}` }) })), showControls && hasStream && (jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onTogglePlay, onMuteUnmute: onToggleMute, onFullscreen: onFullscreen, showControls: true, size: controlsSize }))] }));
+                } }, stream?.id ?? index)) : (jsx("div", { className: "flex items-center justify-center w-full h-full bg-black text-xs text-gray-300", children: "No Video" })), showLabel && (jsx("div", { className: cn('pointer-events-none absolute left-0 right-0 flex items-center justify-between px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-[1px]', labelPlacement === 'bottom'
+                    ? 'bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent'
+                    : 'top-0 bg-gradient-to-b from-black/75 via-black/40 to-transparent'), children: jsx("span", { children: stream?.title || `Camera ${index + 1}` }) })), showControls && hasStream && (jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onTogglePlay, onMuteUnmute: onToggleMute, onFullscreen: onFullscreen, showControls: true, size: controlsSize }))] }));
 };
 
 const DEFAULT_PATTERN_DEFINITIONS = [
     { key: '1', label: '1-Up', category: 'Equal', tileCount: 1 },
+    { key: '2', label: '2-Up', category: 'Equal', tileCount: 2 },
     { key: '4', label: 'Quad', category: 'Equal', tileCount: 4 },
+    { key: '8', label: '2x4', category: 'Equal', tileCount: 8 },
     { key: '9', label: '3x3', category: 'Equal', tileCount: 9 },
+    { key: '14', label: '14 Grid', category: 'Equal', tileCount: 14 },
     { key: '16', label: '4x4', category: 'Equal', tileCount: 16 },
+    { key: '28', label: '28 Grid', category: 'Equal', tileCount: 28 },
     { key: 'M14', label: 'M14', category: 'Equal', tileCount: 15 },
     { key: 'M15', label: 'M15', category: 'Equal', tileCount: 15 },
     { key: '6-Highlight', label: '6 Highlight', category: 'Highlight', tileCount: 6 },
@@ -1370,18 +1376,26 @@ function isHighlightPattern(key) {
 function pickNearestPattern(count) {
     if (count <= 1)
         return '1';
+    if (count <= 2)
+        return '2';
     if (count <= 4)
         return '4';
+    if (count <= 8)
+        return '8';
     if (count <= 9)
         return '9';
     if (count === 14)
         return 'M14';
-    if (count <= 15)
+    if (count <= 14)
+        return '14';
+    if (count === 15)
         return 'M15';
     if (count <= 16)
         return '16';
     if (count <= 20)
         return '20';
+    if (count <= 28)
+        return '28';
     if (count <= 36)
         return '36';
     return '64';
@@ -1534,7 +1548,9 @@ const PatternMenu = ({ activePattern, availablePatterns, onSelect, placement = '
 };
 
 const DEFAULT_HEIGHT = 'calc(100vh - 140px)';
-const LiveVideos = ({ streams, displayStreams, loading = false, pattern, defaultPattern, autoPattern = true, availablePatterns, onPatternChange, onTileClick, onStreamError, showPatternMenu = true, patternMenuPlacement = 'bottom', showTileLabels = true, showTileControls = true, tileControlsSize = 'small', autoPlay = true, muted = true, height = DEFAULT_HEIGHT, className, emptyState, }) => {
+const DEFAULT_TITLE = 'Live Videos';
+const DEFAULT_QUICK_PATTERNS = ['1', '2', '4', '8', '14', '28'];
+const LiveVideos = ({ streams, displayStreams, loading = false, title = DEFAULT_TITLE, pattern, defaultPattern, autoPattern = true, availablePatterns, quickPatternKeys = DEFAULT_QUICK_PATTERNS, onPatternChange, onTileClick, onStreamError, showPatternMenu = true, patternMenuPlacement = 'bottom', showTileLabels = true, tileLabelPlacement = 'top', showTileControls = true, tileControlsSize = 'small', autoPlay = true, muted = true, height = DEFAULT_HEIGHT, className, emptyState, }) => {
     const effectiveStreams = streams ?? [];
     const renderStreams = displayStreams && displayStreams.length > 0 ? displayStreams : effectiveStreams;
     const resolvedHeight = useMemo(() => {
@@ -1543,7 +1559,12 @@ const LiveVideos = ({ streams, displayStreams, loading = false, pattern, default
         return height || DEFAULT_HEIGHT;
     }, [height]);
     const definitions = useMemo(() => resolvePatternDefinitions(availablePatterns || DEFAULT_PATTERN_KEYS), [availablePatterns]);
+    const definitionMap = useMemo(() => new Map(definitions.map(def => [def.key, def])), [definitions]);
     const availableKeys = useMemo(() => definitions.map(def => def.key), [definitions]);
+    const quickPatterns = useMemo(() => {
+        const unique = Array.from(new Set(quickPatternKeys));
+        return unique.filter(key => availableKeys.includes(key));
+    }, [quickPatternKeys, availableKeys]);
     const fallbackPattern = availableKeys[0] ?? '1';
     const isControlled = pattern !== undefined;
     const derivePatternFromStreams = useCallback((count) => {
@@ -1607,7 +1628,7 @@ const LiveVideos = ({ streams, displayStreams, loading = false, pattern, default
         const tileKey = options.key ?? stream?.id ?? `slot-${index}`;
         const state = stream ? getTileState(stream) : { playing: false, muted: true };
         const hasStream = !!stream;
-        return (jsx(LiveVideoTile, { stream: stream, index: index, isPrimary: options.isPrimary, isPlaying: state.playing && hasStream, isMuted: state.muted || !hasStream, showControls: showTileControls && hasStream, controlsSize: tileControlsSize, showLabel: showTileLabels, onTogglePlay: () => stream && togglePlay(stream), onToggleMute: () => stream && toggleMute(stream), onFullscreen: () => stream && setFullscreenStream(stream), onClick: () => stream && handleTileClickInternal(stream, index), onError: error => {
+        return (jsx(LiveVideoTile, { stream: stream, index: index, isPrimary: options.isPrimary, isPlaying: state.playing && hasStream, isMuted: state.muted || !hasStream, showControls: showTileControls && hasStream, controlsSize: tileControlsSize, showLabel: showTileLabels, labelPlacement: tileLabelPlacement, onTogglePlay: () => stream && togglePlay(stream), onToggleMute: () => stream && toggleMute(stream), onFullscreen: () => stream && setFullscreenStream(stream), onClick: () => stream && handleTileClickInternal(stream, index), onError: error => {
                 if (stream) {
                     onStreamError?.(error, stream);
                 }
@@ -1621,6 +1642,7 @@ const LiveVideos = ({ streams, displayStreams, loading = false, pattern, default
         toggleMute,
         onStreamError,
         handleTileClickInternal,
+        tileLabelPlacement,
     ]);
     const patternContent = useMemo(() => {
         if (loading) {
@@ -1749,7 +1771,17 @@ const LiveVideos = ({ streams, displayStreams, loading = false, pattern, default
         loading,
         emptyState,
     ]);
-    return (jsxs("div", { className: cn('w-full h-full flex flex-col gap-3', className), children: [showPatternMenu && (jsx("div", { className: "flex justify-end", children: jsx(PatternMenu, { activePattern: activePattern, availablePatterns: availableKeys, onSelect: handlePatternSelect, placement: patternMenuPlacement }) })), jsx("div", { className: "flex-1 min-h-[240px]", children: patternContent }), fullscreenStream && (jsx(FullscreenModal, { isOpen: !!fullscreenStream, stream: fullscreenStream, isPlaying: true, isMuted: getTileState(fullscreenStream).muted, onClose: () => setFullscreenStream(null), onError: error => onStreamError?.(error, fullscreenStream) }))] }));
+    const showTitle = title !== null && title !== false;
+    const showControlsRow = showPatternMenu || quickPatterns.length > 0;
+    return (jsxs("div", { className: cn('w-full h-full flex flex-col gap-4', className), children: [(showTitle || showControlsRow) && (jsxs("div", { className: "flex flex-wrap items-center justify-between gap-3", children: [showTitle ? (jsx("div", { className: "text-lg font-semibold text-[#05162B] leading-tight", children: title })) : (jsx("div", { className: "flex-1", "aria-hidden": true })), showControlsRow && (jsxs("div", { className: "flex flex-wrap items-center gap-2 justify-end", children: [showPatternMenu && (jsx(PatternMenu, { activePattern: activePattern, availablePatterns: availableKeys, onSelect: handlePatternSelect, placement: patternMenuPlacement })), quickPatterns.length > 0 && (jsx("div", { className: "flex items-center gap-1", children: quickPatterns.map(patternKey => {
+                                    const rawLabel = definitionMap.get(patternKey)?.label ?? patternKey;
+                                    const shortcutLabel = /^\d/.test(patternKey)
+                                        ? patternKey.replace('-Highlight', '')
+                                        : rawLabel.replace(' Highlight', '');
+                                    return (jsx("button", { type: "button", onClick: () => handlePatternSelect(patternKey), className: cn('rounded-md border px-2 py-1 text-xs font-semibold transition-colors', activePattern === patternKey
+                                            ? 'border-[#1f4ea8] bg-[#1f4ea8] text-white shadow-sm'
+                                            : 'border-slate-300 bg-white text-[#0b1f3a] hover:bg-slate-100'), children: shortcutLabel }, patternKey));
+                                }) }))] }))] })), jsx("div", { className: "flex-1 min-h-[240px]", children: patternContent }), fullscreenStream && (jsx(FullscreenModal, { isOpen: !!fullscreenStream, stream: fullscreenStream, isPlaying: true, isMuted: getTileState(fullscreenStream).muted, onClose: () => setFullscreenStream(null), onError: error => onStreamError?.(error, fullscreenStream) }))] }));
 };
 
 /**

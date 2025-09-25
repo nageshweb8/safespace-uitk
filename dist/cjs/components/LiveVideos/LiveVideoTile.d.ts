@@ -9,6 +9,7 @@ export interface LiveVideoTileProps {
     showControls: boolean;
     controlsSize: 'small' | 'medium';
     showLabel: boolean;
+    labelPlacement?: 'top' | 'bottom';
     onTogglePlay: () => void;
     onToggleMute: () => void;
     onFullscreen: () => void;
