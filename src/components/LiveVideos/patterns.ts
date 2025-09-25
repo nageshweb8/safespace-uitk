@@ -5,9 +5,13 @@ import {
 
 export const DEFAULT_PATTERN_DEFINITIONS: LiveVideoPatternDefinition[] = [
   { key: '1', label: '1-Up', category: 'Equal', tileCount: 1 },
+  { key: '2', label: '2-Up', category: 'Equal', tileCount: 2 },
   { key: '4', label: 'Quad', category: 'Equal', tileCount: 4 },
+  { key: '8', label: '2x4', category: 'Equal', tileCount: 8 },
   { key: '9', label: '3x3', category: 'Equal', tileCount: 9 },
+  { key: '14', label: '14 Grid', category: 'Equal', tileCount: 14 },
   { key: '16', label: '4x4', category: 'Equal', tileCount: 16 },
+  { key: '28', label: '28 Grid', category: 'Equal', tileCount: 28 },
   { key: 'M14', label: 'M14', category: 'Equal', tileCount: 15 },
   { key: 'M15', label: 'M15', category: 'Equal', tileCount: 15 },
   { key: '6-Highlight', label: '6 Highlight', category: 'Highlight', tileCount: 6 },
@@ -54,12 +58,16 @@ export function isHighlightPattern(key: LiveVideoPatternKey): boolean {
 
 export function pickNearestPattern(count: number): LiveVideoPatternKey {
   if (count <= 1) return '1';
+  if (count <= 2) return '2';
   if (count <= 4) return '4';
+  if (count <= 8) return '8';
   if (count <= 9) return '9';
   if (count === 14) return 'M14';
-  if (count <= 15) return 'M15';
+  if (count <= 14) return '14';
+  if (count === 15) return 'M15';
   if (count <= 16) return '16';
   if (count <= 20) return '20';
+  if (count <= 28) return '28';
   if (count <= 36) return '36';
   return '64';
 }

@@ -16,6 +16,8 @@ import { FullscreenModal } from '../shared/FullscreenModal';
 import { cn } from '../../utils/cn';
 
 const DEFAULT_HEIGHT = 'calc(100vh - 140px)';
+const DEFAULT_TITLE = 'Live Videos';
+const DEFAULT_QUICK_PATTERNS: LiveVideoPatternKey[] = ['1', '2', '4', '8', '14', '28'];
 
 interface TileState {
   playing: boolean;
@@ -26,16 +28,19 @@ export const LiveVideos: React.FC<LiveVideosProps> = ({
   streams,
   displayStreams,
   loading = false,
+  title = DEFAULT_TITLE,
   pattern,
   defaultPattern,
   autoPattern = true,
   availablePatterns,
+  quickPatternKeys = DEFAULT_QUICK_PATTERNS,
   onPatternChange,
   onTileClick,
   onStreamError,
   showPatternMenu = true,
   patternMenuPlacement = 'bottom',
   showTileLabels = true,
+  tileLabelPlacement = 'top',
   showTileControls = true,
   tileControlsSize = 'small',
   autoPlay = true,
@@ -58,10 +63,20 @@ export const LiveVideos: React.FC<LiveVideosProps> = ({
     [availablePatterns]
   );
 
+  const definitionMap = useMemo(
+    () => new Map(definitions.map(def => [def.key, def] as const)),
+    [definitions]
+  );
+
   const availableKeys = useMemo(
     () => definitions.map(def => def.key),
     [definitions]
   );
+
+  const quickPatterns = useMemo(() => {
+    const unique = Array.from(new Set(quickPatternKeys));
+    return unique.filter(key => availableKeys.includes(key));
+  }, [quickPatternKeys, availableKeys]);
 
   const fallbackPattern = availableKeys[0] ?? '1';
   const isControlled = pattern !== undefined;
@@ -180,6 +195,7 @@ export const LiveVideos: React.FC<LiveVideosProps> = ({
           showControls={showTileControls && hasStream}
           controlsSize={tileControlsSize}
           showLabel={showTileLabels}
+          labelPlacement={tileLabelPlacement}
           onTogglePlay={() => stream && togglePlay(stream)}
           onToggleMute={() => stream && toggleMute(stream)}
           onFullscreen={() => stream && setFullscreenStream(stream)}
@@ -203,6 +219,7 @@ export const LiveVideos: React.FC<LiveVideosProps> = ({
       toggleMute,
       onStreamError,
       handleTileClickInternal,
+      tileLabelPlacement,
     ]
   );
 
@@ -407,16 +424,59 @@ export const LiveVideos: React.FC<LiveVideosProps> = ({
     emptyState,
   ]);
 
+  const showTitle = title !== null && title !== false;
+  const showControlsRow = showPatternMenu || quickPatterns.length > 0;
+
   return (
-    <div className={cn('w-full h-full flex flex-col gap-3', className)}>
-      {showPatternMenu && (
-        <div className="flex justify-end">
-          <PatternMenu
-            activePattern={activePattern}
-            availablePatterns={availableKeys}
-            onSelect={handlePatternSelect}
-            placement={patternMenuPlacement}
-          />
+    <div className={cn('w-full h-full flex flex-col gap-4', className)}>
+      {(showTitle || showControlsRow) && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {showTitle ? (
+            <div className="text-lg font-semibold text-[#05162B] leading-tight">
+              {title}
+            </div>
+          ) : (
+            <div className="flex-1" aria-hidden />
+          )}
+
+          {showControlsRow && (
+            <div className="flex flex-wrap items-center gap-2 justify-end">
+              {showPatternMenu && (
+                <PatternMenu
+                  activePattern={activePattern}
+                  availablePatterns={availableKeys}
+                  onSelect={handlePatternSelect}
+                  placement={patternMenuPlacement}
+                />
+              )}
+
+              {quickPatterns.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {quickPatterns.map(patternKey => {
+                    const rawLabel = definitionMap.get(patternKey)?.label ?? patternKey;
+                    const shortcutLabel = /^\d/.test(patternKey)
+                      ? patternKey.replace('-Highlight', '')
+                      : rawLabel.replace(' Highlight', '');
+                    return (
+                      <button
+                        key={patternKey}
+                        type="button"
+                        onClick={() => handlePatternSelect(patternKey)}
+                        className={cn(
+                          'rounded-md border px-2 py-1 text-xs font-semibold transition-colors',
+                          activePattern === patternKey
+                            ? 'border-[#1f4ea8] bg-[#1f4ea8] text-white shadow-sm'
+                            : 'border-slate-300 bg-white text-[#0b1f3a] hover:bg-slate-100'
+                        )}
+                      >
+                        {shortcutLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

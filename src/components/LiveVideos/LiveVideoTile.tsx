@@ -13,6 +13,7 @@ export interface LiveVideoTileProps {
   showControls: boolean;
   controlsSize: 'small' | 'medium';
   showLabel: boolean;
+  labelPlacement?: 'top' | 'bottom';
   onTogglePlay: () => void;
   onToggleMute: () => void;
   onFullscreen: () => void;
@@ -31,6 +32,7 @@ export const LiveVideoTile: React.FC<LiveVideoTileProps> = ({
   showControls,
   controlsSize,
   showLabel,
+  labelPlacement = 'top',
   onTogglePlay,
   onToggleMute,
   onFullscreen,
@@ -87,7 +89,7 @@ export const LiveVideoTile: React.FC<LiveVideoTileProps> = ({
           autoPlay={isPlaying}
           muted={isMuted}
           controls={false}
-          objectFit="contain"
+          objectFit="cover"
           exposeVideoRef={handleExposeVideoRef}
           onError={error => {
             if (onError && stream) {
@@ -102,7 +104,14 @@ export const LiveVideoTile: React.FC<LiveVideoTileProps> = ({
       )}
 
       {showLabel && (
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 py-1 text-[11px] font-semibold text-white bg-black/55">
+        <div
+          className={cn(
+            'pointer-events-none absolute left-0 right-0 flex items-center justify-between px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-[1px]',
+            labelPlacement === 'bottom'
+              ? 'bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent'
+              : 'top-0 bg-gradient-to-b from-black/75 via-black/40 to-transparent'
+          )}
+        >
           <span>{stream?.title || `Camera ${index + 1}`}</span>
         </div>
       )}

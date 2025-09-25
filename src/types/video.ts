@@ -103,9 +103,13 @@ export type LiveVideoPatternCategory = 'Equal' | 'Highlight' | 'Extreme';
 
 export type LiveVideoPatternKey =
   | '1'
+  | '2'
   | '4'
+  | '8'
   | '9'
+  | '14'
   | '16'
+  | '28'
   | 'M14'
   | 'M15'
   | '6-Highlight'
@@ -128,16 +132,19 @@ export interface LiveVideosProps {
   streams: CameraStream[];
   displayStreams?: CameraStream[];
   loading?: boolean;
+  title?: ReactNode;
   pattern?: LiveVideoPatternKey;
   defaultPattern?: LiveVideoPatternKey;
   autoPattern?: boolean;
   availablePatterns?: LiveVideoPatternKey[];
+  quickPatternKeys?: LiveVideoPatternKey[];
   onPatternChange?: (pattern: LiveVideoPatternKey) => void;
   onTileClick?: (stream: CameraStream, index: number) => void;
   onStreamError?: (error: Error, stream: CameraStream) => void;
   showPatternMenu?: boolean;
   patternMenuPlacement?: 'top' | 'bottom';
   showTileLabels?: boolean;
+  tileLabelPlacement?: 'top' | 'bottom';
   showTileControls?: boolean;
   tileControlsSize?: 'small' | 'medium';
   autoPlay?: boolean;
