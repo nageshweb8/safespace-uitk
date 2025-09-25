@@ -1,1 +1,1 @@
-{"version":3,"file":"VideoPlayer.d.ts","sourceRoot":"","sources":["../../../../src/components/VideoPlayer/VideoPlayer.tsx"],"names":[],"mappings":"AAAA,OAAO,KAA4B,MAAM,OAAO,CAAC;AAEjD,OAAO,EAAE,gBAAgB,EAAgB,MAAM,mBAAmB,CAAC;AAGnE,eAAO,MAAM,WAAW,EAAE,KAAK,CAAC,EAAE,CAAC,gBAAgB,CAuPlD,CAAC"}
+{"version":3,"file":"VideoPlayer.d.ts","sourceRoot":"","sources":["../../../../src/components/VideoPlayer/VideoPlayer.tsx"],"names":[],"mappings":"AAAA,OAAO,KAA4B,MAAM,OAAO,CAAC;AAEjD,OAAO,EAAE,gBAAgB,EAAgB,MAAM,mBAAmB,CAAC;AAGnE,eAAO,MAAM,WAAW,EAAE,KAAK,CAAC,EAAE,CAAC,gBAAgB,CAsQlD,CAAC"}
