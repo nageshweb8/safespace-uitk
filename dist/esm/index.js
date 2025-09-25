@@ -1,8 +1,8 @@
 import { jsxs, jsx, Fragment } from 'react/jsx-runtime';
 import React, { useState, useCallback, useMemo, useRef, useEffect, createContext, useContext } from 'react';
-import { Tooltip, Button, Typography, Modal, Card, Switch, ConfigProvider } from 'antd';
+import { Tooltip, Button, Typography, Modal, Card, Switch, ConfigProvider, Popover, Spin } from 'antd';
 export { Button, Card, Modal, Progress, Tooltip, Typography } from 'antd';
-import { PauseOutlined, PlayCircleOutlined, MutedOutlined, SoundOutlined, ArrowsAltOutlined, ReloadOutlined, ShrinkOutlined } from '@ant-design/icons';
+import { PauseOutlined, PlayCircleOutlined, MutedOutlined, SoundOutlined, ArrowsAltOutlined, ReloadOutlined, ShrinkOutlined, AppstoreOutlined } from '@ant-design/icons';
 import Hls from 'hls.js';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -110,7 +110,7 @@ function cn(...inputs) {
     return twMerge(clsx(inputs));
 }
 
-const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, className, onError, onLoadStart, onLoadEnd, showOverlay = false, }) => {
+const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, className, onError, onLoadStart, onLoadEnd, showOverlay = false, objectFit = 'cover', exposeVideoRef, }) => {
     const videoRef = useRef(null);
     const hlsRef = useRef(null);
     useEffect(() => {
@@ -300,6 +300,12 @@ const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, 
         }
         return cleanup;
     }, [stream.url, stream, onError, onLoadStart, onLoadEnd]);
+    useEffect(() => {
+        exposeVideoRef?.(videoRef.current);
+        return () => {
+            exposeVideoRef?.(null);
+        };
+    }, [exposeVideoRef]);
     const handleVideoError = () => {
         onError?.(new Error('Video playback error'));
     };
@@ -309,7 +315,7 @@ const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, 
     const handleVideoLoadedData = () => {
         onLoadEnd?.();
     };
-    return (jsxs("div", { className: cn('relative w-full h-full', className), children: [jsx("video", { ref: videoRef, autoPlay: autoPlay, muted: muted, controls: controls, playsInline: true, className: "w-full h-full object-cover", onError: handleVideoError, onLoadStart: handleVideoLoadStart, onLoadedData: handleVideoLoadedData, onContextMenu: e => e.preventDefault() }), showOverlay && (jsx("div", { className: "absolute inset-0 bg-black/10 hover:bg-black/20 transition-colors" }))] }));
+    return (jsxs("div", { className: cn('relative w-full h-full', className), children: [jsx("video", { ref: videoRef, autoPlay: autoPlay, muted: muted, controls: controls, playsInline: true, className: cn('w-full h-full', objectFit === 'contain' && 'object-contain bg-black', objectFit === 'fill' && 'object-fill', objectFit === 'none' && 'object-none', objectFit === 'cover' && 'object-cover'), onError: handleVideoError, onLoadStart: handleVideoLoadStart, onLoadedData: handleVideoLoadedData, onContextMenu: e => e.preventDefault() }), showOverlay && (jsx("div", { className: "absolute inset-0 bg-black/10 hover:bg-black/20 transition-colors" }))] }));
 };
 
 const VideoControls = ({ isPlaying, isMuted, onPlayPause, onMuteUnmute, onFullscreen, showControls = true, size = 'medium', }) => {
@@ -1291,6 +1297,461 @@ const Tree = ({ data, title, titleIcon, searchable = true, searchPlaceholder = '
     return (jsxs("div", { className: cn('bg-white min-w-[260px] h-full px-4 box-border border-r border-gray-300 text-sm text-gray-800', className), style: style, children: [title && (jsx("div", { className: "border-b border-gray-200 mb-2", children: jsxs("div", { className: "px-2 py-2 font-bold text-lg text-[#05162B] flex items-center gap-2", children: [titleIcon ? titleIcon : jsx(HiVideoCamera, { size: 22 }), title] }) })), searchable && (jsx(TreeSearch, { value: searchTerm, onChange: setSearchTerm, placeholder: searchPlaceholder })), jsx("div", { className: "overflow-y-auto max-h-[calc(100vh-140px)] mt-2", children: filteredData.length === 0 ? (jsx("div", { className: "text-gray-500 px-2 py-2 text-sm italic", children: searchTerm ? `No results found` : emptyMessage })) : (jsx("div", { children: filteredData.map(node => (jsx(TreeNodeComponent, { node: node, level: 0, isSelected: internalSelectedKeys.includes(node.key), onLeafClick: handleLeafClick, onNodeToggle: handleNodeToggle, onPinToggle: onPinToggle, onSelectionChange: handleSelectionChange, path: [], searchTerm: searchTerm, highlightSearch: highlightSearch, renderNode: renderNode, showExpandIcons: showExpandIcons, selectable: selectable, forceExpand: searchTerm.length > 0, maxPinnedItems: maxPinnedItems, currentPinnedCount: currentPinnedCount, alwaysShowPinIcons: alwaysShowPinIcons }, node.key))) })) })] }));
 };
 
+const LiveVideoTile = ({ stream, index, isPrimary = false, isPlaying, isMuted, showControls, controlsSize, showLabel, onTogglePlay, onToggleMute, onFullscreen, onClick, onError, className, style, }) => {
+    const videoElementRef = useRef(null);
+    const hasStream = !!stream && !!stream.url;
+    useEffect(() => {
+        const video = videoElementRef.current;
+        if (!video)
+            return;
+        if (isMuted !== video.muted) {
+            video.muted = isMuted;
+        }
+    }, [isMuted]);
+    useEffect(() => {
+        const video = videoElementRef.current;
+        if (!video)
+            return;
+        if (isPlaying) {
+            const playPromise = video.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch(() => {
+                    /* ignore */
+                });
+            }
+        }
+        else {
+            video.pause();
+        }
+    }, [isPlaying]);
+    const handleExposeVideoRef = (video) => {
+        videoElementRef.current = video;
+    };
+    return (jsxs("div", { className: cn('relative overflow-hidden bg-black rounded-md isolate', isPrimary ? 'shadow-[0_0_0_2px_rgba(67,228,255,0.35)]' : '', className), style: style, onClick: onClick, children: [hasStream ? (jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: false, objectFit: "contain", exposeVideoRef: handleExposeVideoRef, onError: error => {
+                    if (onError && stream) {
+                        onError(error);
+                    }
+                } }, stream?.id ?? index)) : (jsx("div", { className: "flex items-center justify-center w-full h-full bg-black text-xs text-gray-300", children: "No Video" })), showLabel && (jsx("div", { className: "absolute top-0 left-0 right-0 flex items-center justify-between px-3 py-1 text-[11px] font-semibold text-white bg-black/55", children: jsx("span", { children: stream?.title || `Camera ${index + 1}` }) })), showControls && hasStream && (jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onTogglePlay, onMuteUnmute: onToggleMute, onFullscreen: onFullscreen, showControls: true, size: controlsSize }))] }));
+};
+
+const DEFAULT_PATTERN_DEFINITIONS = [
+    { key: '1', label: '1-Up', category: 'Equal', tileCount: 1 },
+    { key: '4', label: 'Quad', category: 'Equal', tileCount: 4 },
+    { key: '9', label: '3x3', category: 'Equal', tileCount: 9 },
+    { key: '16', label: '4x4', category: 'Equal', tileCount: 16 },
+    { key: 'M14', label: 'M14', category: 'Equal', tileCount: 15 },
+    { key: 'M15', label: 'M15', category: 'Equal', tileCount: 15 },
+    { key: '6-Highlight', label: '6 Highlight', category: 'Highlight', tileCount: 6 },
+    { key: '8-Highlight', label: '8 Highlight', category: 'Highlight', tileCount: 8 },
+    { key: '10-Highlight', label: '10 Highlight', category: 'Highlight', tileCount: 10 },
+    { key: '12-Highlight', label: '12 Highlight', category: 'Highlight', tileCount: 12 },
+    { key: '16-Highlight', label: '16 Highlight', category: 'Highlight', tileCount: 16 },
+    { key: '20', label: '20 Grid', category: 'Extreme', tileCount: 20 },
+    { key: '36', label: '36 Grid', category: 'Extreme', tileCount: 36 },
+    { key: '64', label: '64 Grid', category: 'Extreme', tileCount: 64 },
+];
+const definitionMap = new Map(DEFAULT_PATTERN_DEFINITIONS.map(def => [def.key, def]));
+const DEFAULT_PATTERN_KEYS = DEFAULT_PATTERN_DEFINITIONS.map(def => def.key);
+const DEFAULT_PATTERN_CATEGORY_ORDER = ['Equal', 'Highlight', 'Extreme'];
+function getPatternDefinition(key) {
+    return definitionMap.get(key);
+}
+function resolvePatternDefinitions(available) {
+    if (!available || available.length === 0) {
+        return DEFAULT_PATTERN_DEFINITIONS;
+    }
+    return available
+        .map(key => getPatternDefinition(key))
+        .filter((def) => !!def);
+}
+function isHighlightPattern(key) {
+    return key.includes('Highlight');
+}
+function pickNearestPattern(count) {
+    if (count <= 1)
+        return '1';
+    if (count <= 4)
+        return '4';
+    if (count <= 9)
+        return '9';
+    if (count === 14)
+        return 'M14';
+    if (count <= 15)
+        return 'M15';
+    if (count <= 16)
+        return '16';
+    if (count <= 20)
+        return '20';
+    if (count <= 36)
+        return '36';
+    return '64';
+}
+
+const TILE_BG = 'bg-[#3E82FF]';
+const TILE_BG_LIGHT = 'bg-[#E5EDFF]';
+const TILE_BORDER = 'border border-white/60';
+const categoryTitle = {
+    Equal: 'Equal',
+    Highlight: 'Highlight',
+    Extreme: 'Extreme',
+};
+function renderNumericPreview(tileCount) {
+    const cols = Math.ceil(Math.sqrt(tileCount));
+    const rows = Math.ceil(tileCount / cols);
+    const cells = Array.from({ length: tileCount }, (_, idx) => (jsx("div", { className: cn(TILE_BG, TILE_BORDER) }, idx)));
+    return (jsx("div", { className: "grid", style: {
+            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+            gridTemplateRows: `repeat(${rows}, 1fr)`,
+            width: 72,
+            height: 72,
+            gap: 2,
+        }, children: cells }));
+}
+function renderM14Preview() {
+    const cells = [];
+    const keyMatrix = [];
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 5; col++) {
+            const id = `${row}-${col}`;
+            let className = TILE_BG;
+            const style = {};
+            if (row < 2 && col < 2) {
+                if (row === 0 && col === 0) {
+                    className = `${TILE_BG} ${TILE_BORDER}`;
+                    style.gridColumn = 'span 2';
+                    style.gridRow = 'span 2';
+                }
+                else {
+                    continue;
+                }
+            }
+            if (row >= 2 && row < 4 && col < 2) {
+                if (row === 2 && col === 0) {
+                    className = `${TILE_BG} ${TILE_BORDER}`;
+                    style.gridColumn = 'span 2';
+                    style.gridRow = 'span 2';
+                }
+                else {
+                    continue;
+                }
+            }
+            keyMatrix.push({ key: id, className: `${className} ${TILE_BORDER}`, style });
+        }
+    }
+    keyMatrix.forEach(({ key, className, style }) => cells.push(jsx("div", { className: className, style: style }, key)));
+    return (jsx("div", { className: "grid", style: {
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            gridTemplateRows: 'repeat(4, 1fr)',
+            width: 72,
+            height: 72,
+            gap: 2,
+        }, children: cells }));
+}
+function renderM15Preview() {
+    const cells = [];
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 5; col++) {
+            const id = `${row}-${col}`;
+            const isTopLeft = row < 2 && col < 2;
+            const isMidRight = row < 2 && col >= 2 && col < 4;
+            if (isTopLeft && !(row === 0 && col === 0))
+                continue;
+            if (isMidRight && !(row === 0 && col === 2))
+                continue;
+            const style = {};
+            if (row === 0 && col === 0) {
+                style.gridColumn = 'span 2';
+                style.gridRow = 'span 2';
+            }
+            if (row === 0 && col === 2) {
+                style.gridColumn = 'span 2';
+                style.gridRow = 'span 2';
+            }
+            cells.push(jsx("div", { className: `${TILE_BG} ${TILE_BORDER}`, style: style }, id));
+        }
+    }
+    return (jsx("div", { className: "grid", style: {
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            gridTemplateRows: 'repeat(4, 1fr)',
+            width: 72,
+            height: 72,
+            gap: 2,
+        }, children: cells }));
+}
+function renderHighlightPreview(tileCount) {
+    const size = Math.max(3, Math.floor(tileCount / 2));
+    const cells = [];
+    const bigSpan = size - 1;
+    let smallIndex = 0;
+    for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
+            const id = `${row}-${col}`;
+            if (row < bigSpan && col < bigSpan) {
+                if (row === 0 && col === 0) {
+                    cells.push(jsx("div", { className: `${TILE_BG} ${TILE_BORDER}`, style: { gridColumn: `span ${bigSpan}`, gridRow: `span ${bigSpan}` } }, id));
+                }
+                continue;
+            }
+            if (smallIndex < tileCount - 1) {
+                cells.push(jsx("div", { className: `${TILE_BG_LIGHT} ${TILE_BORDER}` }, id));
+                smallIndex += 1;
+            }
+        }
+    }
+    return (jsx("div", { className: "grid", style: {
+            gridTemplateColumns: `repeat(${size}, 1fr)`,
+            gridTemplateRows: `repeat(${size}, 1fr)`,
+            width: 72,
+            height: 72,
+            gap: 2,
+        }, children: cells }));
+}
+function renderPreview(def) {
+    if (def.key === 'M14')
+        return renderM14Preview();
+    if (def.key === 'M15')
+        return renderM15Preview();
+    if (isHighlightPattern(def.key))
+        return renderHighlightPreview(def.tileCount);
+    return renderNumericPreview(def.tileCount);
+}
+const PatternMenu = ({ activePattern, availablePatterns, onSelect, placement = 'bottom', triggerLabel = 'Change pattern', }) => {
+    const [open, setOpen] = useState(false);
+    const definitions = useMemo(() => resolvePatternDefinitions(availablePatterns), [availablePatterns]);
+    const grouped = useMemo(() => {
+        return DEFAULT_PATTERN_CATEGORY_ORDER.map(category => ({
+            category,
+            patterns: definitions.filter(def => def.category === category),
+        })).filter(group => group.patterns.length > 0);
+    }, [definitions]);
+    const content = (jsx("div", { className: "min-w-[420px] bg-neutral-900 text-white rounded-md p-4 shadow-2xl", children: jsx("div", { className: "space-y-4", children: grouped.map(group => (jsxs("div", { children: [jsx("h4", { className: "font-semibold text-sm mb-2 uppercase tracking-wide text-neutral-200", children: categoryTitle[group.category] }), jsx("div", { className: "flex flex-wrap gap-3", children: group.patterns.map(pattern => (jsx("button", { className: cn('rounded-md border border-transparent focus:outline-none focus:ring-2 focus:ring-[#43E4FF] transition', activePattern === pattern.key
+                                ? 'bg-[#2A5BE2]/80'
+                                : 'bg-neutral-800 hover:bg-neutral-700'), onClick: () => {
+                                onSelect(pattern.key);
+                                setOpen(false);
+                            }, children: renderPreview(pattern) }, pattern.key))) })] }, group.category))) }) }));
+    return (jsx(Popover, { trigger: "click", content: content, placement: placement === 'top' ? 'top' : 'bottom', open: open, onOpenChange: setOpen, overlayInnerStyle: { padding: 0 }, children: jsx(Button, { icon: jsx(AppstoreOutlined, {}), children: triggerLabel }) }));
+};
+
+const DEFAULT_HEIGHT = 'calc(100vh - 140px)';
+const LiveVideos = ({ streams, displayStreams, loading = false, pattern, defaultPattern, autoPattern = true, availablePatterns, onPatternChange, onTileClick, onStreamError, showPatternMenu = true, patternMenuPlacement = 'bottom', showTileLabels = true, showTileControls = true, tileControlsSize = 'small', autoPlay = true, muted = true, height = DEFAULT_HEIGHT, className, emptyState, }) => {
+    const effectiveStreams = streams ?? [];
+    const renderStreams = displayStreams && displayStreams.length > 0 ? displayStreams : effectiveStreams;
+    const resolvedHeight = useMemo(() => {
+        if (typeof height === 'number')
+            return `${height}px`;
+        return height || DEFAULT_HEIGHT;
+    }, [height]);
+    const definitions = useMemo(() => resolvePatternDefinitions(availablePatterns || DEFAULT_PATTERN_KEYS), [availablePatterns]);
+    const availableKeys = useMemo(() => definitions.map(def => def.key), [definitions]);
+    const fallbackPattern = availableKeys[0] ?? '1';
+    const isControlled = pattern !== undefined;
+    const derivePatternFromStreams = useCallback((count) => {
+        const candidate = pickNearestPattern(count);
+        return availableKeys.includes(candidate) ? candidate : fallbackPattern;
+    }, [availableKeys, fallbackPattern]);
+    const [internalPattern, setInternalPattern] = useState(() => {
+        if (defaultPattern && availableKeys.includes(defaultPattern)) {
+            return defaultPattern;
+        }
+        return derivePatternFromStreams(renderStreams.length);
+    });
+    useEffect(() => {
+        if (isControlled)
+            return;
+        if (defaultPattern && availableKeys.includes(defaultPattern)) {
+            setInternalPattern(defaultPattern);
+        }
+    }, [defaultPattern, availableKeys, isControlled]);
+    useEffect(() => {
+        if (isControlled || !autoPattern)
+            return;
+        const next = derivePatternFromStreams(renderStreams.length);
+        setInternalPattern(prev => (prev === next ? prev : next));
+    }, [renderStreams.length, derivePatternFromStreams, autoPattern, isControlled]);
+    const [tileState, setTileState] = useState({});
+    const [fullscreenStream, setFullscreenStream] = useState(null);
+    const activePattern = (isControlled ? pattern : internalPattern) ?? fallbackPattern;
+    const activeDefinition = useMemo(() => definitions.find(def => def.key === activePattern), [definitions, activePattern]);
+    const limitedStreams = useMemo(() => {
+        const max = activeDefinition?.tileCount ?? renderStreams.length;
+        return renderStreams.slice(0, max);
+    }, [renderStreams, activeDefinition]);
+    const getTileState = useCallback((stream) => {
+        return tileState[stream.id] ?? { playing: autoPlay, muted };
+    }, [tileState, autoPlay, muted]);
+    const togglePlay = useCallback((stream) => {
+        setTileState(prev => {
+            const current = prev[stream.id] ?? { playing: autoPlay, muted };
+            return { ...prev, [stream.id]: { ...current, playing: !current.playing } };
+        });
+    }, [autoPlay, muted]);
+    const toggleMute = useCallback((stream) => {
+        setTileState(prev => {
+            const current = prev[stream.id] ?? { playing: autoPlay, muted };
+            return { ...prev, [stream.id]: { ...current, muted: !current.muted } };
+        });
+    }, [autoPlay, muted]);
+    const handlePatternSelect = useCallback((next) => {
+        if (!availableKeys.includes(next))
+            return;
+        if (!isControlled) {
+            setInternalPattern(next);
+        }
+        onPatternChange?.(next);
+    }, [availableKeys, isControlled, onPatternChange]);
+    const handleTileClickInternal = useCallback((stream, index) => {
+        onTileClick?.(stream, index);
+    }, [onTileClick]);
+    const renderTile = useCallback((stream, index, options = {}) => {
+        const tileKey = options.key ?? stream?.id ?? `slot-${index}`;
+        const state = stream ? getTileState(stream) : { playing: false, muted: true };
+        const hasStream = !!stream;
+        return (jsx(LiveVideoTile, { stream: stream, index: index, isPrimary: options.isPrimary, isPlaying: state.playing && hasStream, isMuted: state.muted || !hasStream, showControls: showTileControls && hasStream, controlsSize: tileControlsSize, showLabel: showTileLabels, onTogglePlay: () => stream && togglePlay(stream), onToggleMute: () => stream && toggleMute(stream), onFullscreen: () => stream && setFullscreenStream(stream), onClick: () => stream && handleTileClickInternal(stream, index), onError: error => {
+                if (stream) {
+                    onStreamError?.(error, stream);
+                }
+            }, className: cn('w-full h-full', options.className), style: options.style }, tileKey));
+    }, [
+        getTileState,
+        showTileControls,
+        showTileLabels,
+        tileControlsSize,
+        togglePlay,
+        toggleMute,
+        onStreamError,
+        handleTileClickInternal,
+    ]);
+    const patternContent = useMemo(() => {
+        if (loading) {
+            return (jsx("div", { className: "flex items-center justify-center w-full h-full", children: jsx(Spin, { size: "large" }) }));
+        }
+        if (limitedStreams.length === 0) {
+            return (emptyState ?? (jsx("div", { className: "flex items-center justify-center w-full h-[320px] rounded-md border border-neutral-800 bg-neutral-900/40 text-sm text-neutral-400", children: "No camera streams available" })));
+        }
+        const streamsToUse = limitedStreams;
+        const renderNumeric = (count) => {
+            const cols = Math.ceil(Math.sqrt(count));
+            const rows = Math.ceil(count / cols);
+            const tiles = streamsToUse.slice(0, count);
+            return (jsx("div", { className: "grid gap-0.5", style: {
+                    height: resolvedHeight,
+                    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                    gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+                }, children: tiles.map((stream, idx) => renderTile(stream, idx)) }));
+        };
+        const renderHighlight = (count) => {
+            const gridSize = Math.max(3, Math.floor(count / 2));
+            const total = Math.min(count, streamsToUse.length);
+            const items = [];
+            const primary = streamsToUse[0];
+            items.push(renderTile(primary, 0, {
+                key: 'primary',
+                isPrimary: true,
+                style: {
+                    gridColumn: `span ${gridSize - 1} / span ${gridSize - 1}`,
+                    gridRow: `span ${gridSize - 1} / span ${gridSize - 1}`,
+                },
+            }));
+            let idx = 1;
+            for (let r = 0; r < gridSize - 1 && idx < total; r++) {
+                const stream = streamsToUse[idx];
+                items.push(renderTile(stream, idx, {
+                    key: `right-${idx}`,
+                    style: { gridColumn: `${gridSize} / ${gridSize + 1}`, gridRow: `${r + 1} / ${r + 2}` },
+                }));
+                idx += 1;
+            }
+            for (let c = 0; c < gridSize && idx < total; c++) {
+                const stream = streamsToUse[idx];
+                items.push(renderTile(stream, idx, {
+                    key: `bottom-${idx}`,
+                    style: { gridColumn: `${c + 1} / ${c + 2}`, gridRow: `${gridSize} / ${gridSize + 1}` },
+                }));
+                idx += 1;
+            }
+            return (jsx("div", { className: "grid gap-0.5", style: {
+                    height: resolvedHeight,
+                    gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
+                    gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))`,
+                }, children: items }));
+        };
+        const renderM14 = () => {
+            const items = [];
+            let tileIdx = 0;
+            for (let i = 0; i < 20; i++) {
+                const row = Math.floor(i / 5) + 1;
+                const col = (i % 5) + 1;
+                const isTopLeft = row <= 2 && col <= 2;
+                const isLowerLeft = row >= 3 && col <= 2;
+                if ((isTopLeft && i !== 0) || (isLowerLeft && i !== 11)) {
+                    continue;
+                }
+                const stream = streamsToUse[tileIdx];
+                items.push(renderTile(stream, tileIdx, {
+                    key: `m14-${i}`,
+                    style: i === 0
+                        ? { gridColumn: 'span 2 / span 2', gridRow: 'span 2 / span 2' }
+                        : i === 11
+                            ? { gridColumn: 'span 2 / span 2', gridRow: 'span 2 / span 2' }
+                            : undefined,
+                }));
+                tileIdx += 1;
+                if (tileIdx >= streamsToUse.length)
+                    break;
+            }
+            return (jsx("div", { className: "grid grid-cols-5 grid-rows-4 gap-0.5", style: { height: resolvedHeight }, children: items }));
+        };
+        const renderM15 = () => {
+            const items = [];
+            let tileIdx = 0;
+            for (let i = 0; i < 20; i++) {
+                const row = Math.floor(i / 5) + 1;
+                const col = (i % 5) + 1;
+                const isTopLeft = row <= 2 && col <= 2;
+                const isMidRight = row <= 2 && col >= 3 && col <= 4;
+                if ((isTopLeft && i !== 0) || (isMidRight && i !== 3)) {
+                    continue;
+                }
+                const stream = streamsToUse[tileIdx];
+                items.push(renderTile(stream, tileIdx, {
+                    key: `m15-${i}`,
+                    style: i === 0 || i === 3
+                        ? { gridColumn: 'span 2 / span 2', gridRow: 'span 2 / span 2' }
+                        : undefined,
+                }));
+                tileIdx += 1;
+                if (tileIdx >= streamsToUse.length)
+                    break;
+            }
+            return (jsx("div", { className: "grid grid-cols-5 grid-rows-4 gap-0.5", style: { height: resolvedHeight }, children: items }));
+        };
+        if (activePattern === 'M14') {
+            return renderM14();
+        }
+        if (activePattern === 'M15') {
+            return renderM15();
+        }
+        if (activePattern.endsWith('Highlight')) {
+            const count = Number(activePattern.split('-')[0]) || streamsToUse.length;
+            return renderHighlight(count);
+        }
+        const numericCount = Number(activePattern);
+        if (!Number.isNaN(numericCount)) {
+            return renderNumeric(numericCount);
+        }
+        return renderNumeric(streamsToUse.length);
+    }, [
+        limitedStreams,
+        renderTile,
+        activePattern,
+        resolvedHeight,
+        loading,
+        emptyState,
+    ]);
+    return (jsxs("div", { className: cn('w-full h-full flex flex-col gap-3', className), children: [showPatternMenu && (jsx("div", { className: "flex justify-end", children: jsx(PatternMenu, { activePattern: activePattern, availablePatterns: availableKeys, onSelect: handlePatternSelect, placement: patternMenuPlacement }) })), jsx("div", { className: "flex-1 min-h-[240px]", children: patternContent }), fullscreenStream && (jsx(FullscreenModal, { isOpen: !!fullscreenStream, stream: fullscreenStream, isPlaying: true, isMuted: getTileState(fullscreenStream).muted, onClose: () => setFullscreenStream(null), onError: error => onStreamError?.(error, fullscreenStream) }))] }));
+};
+
 /**
  * Hook for managing tree component state
  *
@@ -1440,5 +1901,5 @@ const useTreeState = ({ initialData, initialSelectedKeys = [], initialExpandedKe
 // Version
 const version = '0.1.4';
 
-export { FullscreenModal, LiveFeedPlayer, LiveFeedViewer, MainVideoPlayer, ProgressBar, SafeSpaceThemeProvider, StreamInfo, ThumbnailGrid, Tree, TreeNodeComponent, TreeSearch, VideoControls, VideoPlayer, cn, useSafeSpaceTheme, useStreamLayout, useTreeState, useVideoPlayer, version };
+export { FullscreenModal, LiveFeedPlayer, LiveFeedViewer, LiveVideos, MainVideoPlayer, ProgressBar, SafeSpaceThemeProvider, StreamInfo, ThumbnailGrid, Tree, TreeNodeComponent, TreeSearch, VideoControls, VideoPlayer, cn, useSafeSpaceTheme, useStreamLayout, useTreeState, useVideoPlayer, version };
 //# sourceMappingURL=index.js.map
