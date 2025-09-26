@@ -248,11 +248,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         controls={controls}
         playsInline
         className={cn(
-          'w-full h-full',
-          objectFit === 'contain' && 'object-contain bg-black',
-          objectFit === 'fill' && 'object-fill',
-          objectFit === 'none' && 'object-none',
-          objectFit === 'cover' && 'object-cover'
+          'w-full h-full object-fill'
+          // objectFit === 'contain' && 'object-contain bg-black',
+          // objectFit === 'fill' && 'object-fill',
+          // objectFit === 'none' && 'object-none',
+          // objectFit === 'cover' && 'object-cover'
         )}
         onError={handleVideoError}
         onLoadStart={handleVideoLoadStart}

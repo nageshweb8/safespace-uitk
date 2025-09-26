@@ -316,7 +316,12 @@ const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, 
     const handleVideoLoadedData = () => {
         onLoadEnd?.();
     };
-    return (jsxRuntime.jsxs("div", { className: cn('relative w-full h-full', className), children: [jsxRuntime.jsx("video", { ref: videoRef, autoPlay: autoPlay, muted: muted, controls: controls, playsInline: true, className: cn('w-full h-full', objectFit === 'contain' && 'object-contain bg-black', objectFit === 'fill' && 'object-fill', objectFit === 'none' && 'object-none', objectFit === 'cover' && 'object-cover'), onError: handleVideoError, onLoadStart: handleVideoLoadStart, onLoadedData: handleVideoLoadedData, onContextMenu: e => e.preventDefault() }), showOverlay && (jsxRuntime.jsx("div", { className: "absolute inset-0 bg-black/10 hover:bg-black/20 transition-colors" }))] }));
+    return (jsxRuntime.jsxs("div", { className: cn('relative w-full h-full', className), children: [jsxRuntime.jsx("video", { ref: videoRef, autoPlay: autoPlay, muted: muted, controls: controls, playsInline: true, className: cn('w-full h-full object-fill'
+                // objectFit === 'contain' && 'object-contain bg-black',
+                // objectFit === 'fill' && 'object-fill',
+                // objectFit === 'none' && 'object-none',
+                // objectFit === 'cover' && 'object-cover'
+                ), onError: handleVideoError, onLoadStart: handleVideoLoadStart, onLoadedData: handleVideoLoadedData, onContextMenu: e => e.preventDefault() }), showOverlay && (jsxRuntime.jsx("div", { className: "absolute inset-0 bg-black/10 hover:bg-black/20 transition-colors" }))] }));
 };
 
 const VideoControls = ({ isPlaying, isMuted, onPlayPause, onMuteUnmute, onFullscreen, showControls = true, size = 'medium', }) => {
@@ -1774,7 +1779,7 @@ const LiveVideos = ({ streams, displayStreams, loading = false, title = DEFAULT_
     ]);
     const showTitle = title !== null && title !== false;
     const showControlsRow = showPatternMenu || quickPatterns.length > 0;
-    return (jsxRuntime.jsxs("div", { className: cn('w-full h-full flex flex-col gap-4', className), children: [(showTitle || showControlsRow) && (jsxRuntime.jsxs("div", { className: "flex flex-wrap items-center justify-between gap-3", children: [showTitle ? (jsxRuntime.jsx("div", { className: "text-lg font-semibold text-[#05162B] leading-tight", children: title })) : (jsxRuntime.jsx("div", { className: "flex-1", "aria-hidden": true })), showControlsRow && (jsxRuntime.jsxs("div", { className: "flex flex-wrap items-center gap-2 justify-end", children: [showPatternMenu && (jsxRuntime.jsx(PatternMenu, { activePattern: activePattern, availablePatterns: availableKeys, onSelect: handlePatternSelect, placement: patternMenuPlacement })), quickPatterns.length > 0 && (jsxRuntime.jsx("div", { className: "flex items-center gap-1", children: quickPatterns.map(patternKey => {
+    return (jsxRuntime.jsxs("div", { className: cn('w-full h-full flex flex-col gap-4', className), children: [(showTitle || showControlsRow) && (jsxRuntime.jsxs("div", { className: "flex flex-wrap items-center justify-between gap-3", children: [showTitle ? (jsxRuntime.jsx("h1", { className: "text-2xl font-bold text-[#05162B]", children: title })) : (jsxRuntime.jsx("div", { className: "flex-1", "aria-hidden": true })), showControlsRow && (jsxRuntime.jsxs("div", { className: "flex flex-wrap items-center gap-2 justify-end", children: [showPatternMenu && (jsxRuntime.jsx(PatternMenu, { activePattern: activePattern, availablePatterns: availableKeys, onSelect: handlePatternSelect, placement: patternMenuPlacement })), quickPatterns.length > 0 && (jsxRuntime.jsx("div", { className: "flex items-center gap-1", children: quickPatterns.map(patternKey => {
                                     const rawLabel = definitionMap.get(patternKey)?.label ?? patternKey;
                                     const shortcutLabel = /^\d/.test(patternKey)
                                         ? patternKey.replace('-Highlight', '')

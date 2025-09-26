@@ -432,9 +432,9 @@ export const LiveVideos: React.FC<LiveVideosProps> = ({
       {(showTitle || showControlsRow) && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           {showTitle ? (
-            <div className="text-lg font-semibold text-[#05162B] leading-tight">
+            <h1 className="text-2xl font-bold text-[#05162B]">
               {title}
-            </div>
+            </h1>
           ) : (
             <div className="flex-1" aria-hidden />
           )}
