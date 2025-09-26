@@ -56,7 +56,7 @@ export const FullscreenModal: React.FC<FullscreenModalProps> = ({
         {/* Stream info in fullscreen */}
         <div className="absolute top-4 left-4 bg-black/70 text-white px-4 py-2 rounded">
           <div className="text-lg font-medium">{stream.title}</div>
-          {stream.metadata && (
+          {stream.metadata?.resolution && stream.metadata?.fps && (
             <div className="text-sm opacity-75">
               {stream.metadata.resolution} • {stream.metadata.fps}fps
               {stream.metadata.bitrate && ` • ${stream.metadata.bitrate}`}
