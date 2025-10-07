@@ -172,12 +172,19 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 10,
+        liveDurationInfinity: true,
         backBufferLength: 90,
         maxBufferLength: 30,
         maxMaxBufferLength: 600,
         startLevel: -1,
         autoStartLoad: true,
         capLevelToPlayerSize: true,
+        manifestLoadingMaxRetry: 6,
+        manifestLoadingRetryDelay: 1000,
+        levelLoadingMaxRetry: 6,
+        levelLoadingRetryDelay: 1000,
       });
 
       hlsRef.current = hls;
@@ -193,19 +200,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              onError?.(new Error(`Network Error: ${data.details}`));
+              console.warn('HLS Network Error - attempting recovery:', data.details);
+              hls.startLoad();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              onError?.(new Error(`Media Error: ${data.details}`));
-              try {
-                hls.recoverMediaError();
-              } catch (recoverError) {
-                onError?.(
-                  new Error(`Media Error Recovery Failed: ${recoverError}`)
-                );
-              }
+              console.warn('HLS Media Error - attempting recovery:', data.details);
+              hls.recoverMediaError();
               break;
             default:
+              console.error('HLS Fatal Error:', data.type, data.details);
               onError?.(
                 new Error(`Fatal Error: ${data.type} - ${data.details}`)
               );
