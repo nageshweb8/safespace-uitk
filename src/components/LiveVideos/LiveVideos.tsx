@@ -124,31 +124,68 @@ export const LiveVideos: React.FC<LiveVideosProps> = ({
     return renderStreams.slice(0, max);
   }, [renderStreams, activeDefinition]);
 
-  const getTileState = useCallback(
-    (stream: CameraStream): TileState => {
-      return tileState[stream.id] ?? { playing: autoPlay, muted };
-    },
-    [tileState, autoPlay, muted]
-  );
+  // Create a stable stream map for quick lookups by ID
+  const streamMap = useMemo(() => {
+    const map = new Map<string, { stream: CameraStream; index: number }>();
+    limitedStreams.forEach((stream, index) => {
+      map.set(stream.id, { stream, index });
+    });
+    return map;
+  }, [limitedStreams]);
 
-  const togglePlay = useCallback(
-    (stream: CameraStream) => {
+  // Stable callback that takes streamId - won't change between renders
+  const handleTogglePlay = useCallback(
+    (streamId: string) => {
       setTileState(prev => {
-        const current = prev[stream.id] ?? { playing: autoPlay, muted };
-        return { ...prev, [stream.id]: { ...current, playing: !current.playing } };
+        const current = prev[streamId] ?? { playing: autoPlay, muted };
+        return { ...prev, [streamId]: { ...current, playing: !current.playing } };
       });
     },
     [autoPlay, muted]
   );
 
-  const toggleMute = useCallback(
-    (stream: CameraStream) => {
+  // Stable callback that takes streamId - won't change between renders
+  const handleToggleMute = useCallback(
+    (streamId: string) => {
       setTileState(prev => {
-        const current = prev[stream.id] ?? { playing: autoPlay, muted };
-        return { ...prev, [stream.id]: { ...current, muted: !current.muted } };
+        const current = prev[streamId] ?? { playing: autoPlay, muted };
+        return { ...prev, [streamId]: { ...current, muted: !current.muted } };
       });
     },
     [autoPlay, muted]
+  );
+
+  // Stable callback for fullscreen - won't change between renders
+  const handleFullscreen = useCallback(
+    (streamId: string) => {
+      const entry = streamMap.get(streamId);
+      if (entry) {
+        setFullscreenStream(entry.stream);
+      }
+    },
+    [streamMap]
+  );
+
+  // Stable callback for tile click - won't change between renders
+  const handleTileClickById = useCallback(
+    (streamId: string) => {
+      const entry = streamMap.get(streamId);
+      if (entry && onTileClick) {
+        onTileClick(entry.stream, entry.index);
+      }
+    },
+    [streamMap, onTileClick]
+  );
+
+  // Stable callback for error - won't change between renders
+  const handleStreamError = useCallback(
+    (error: Error, streamId: string) => {
+      const entry = streamMap.get(streamId);
+      if (entry && onStreamError) {
+        onStreamError(error, entry.stream);
+      }
+    },
+    [streamMap, onStreamError]
   );
 
   const handlePatternSelect = useCallback(
@@ -160,13 +197,6 @@ export const LiveVideos: React.FC<LiveVideosProps> = ({
       onPatternChange?.(next);
     },
     [availableKeys, isControlled, onPatternChange]
-  );
-
-  const handleTileClickInternal = useCallback(
-    (stream: CameraStream, index: number) => {
-      onTileClick?.(stream, index);
-    },
-    [onTileClick]
   );
 
   const renderTile = useCallback(
@@ -181,7 +211,9 @@ export const LiveVideos: React.FC<LiveVideosProps> = ({
       } = {}
     ) => {
       const tileKey = options.key ?? stream?.id ?? `slot-${index}`;
-      const state = stream ? getTileState(stream) : { playing: false, muted: true };
+      const state = stream 
+        ? (tileState[stream.id] ?? { playing: autoPlay, muted }) 
+        : { playing: false, muted: true };
       const hasStream = !!stream;
 
       return (
@@ -196,30 +228,29 @@ export const LiveVideos: React.FC<LiveVideosProps> = ({
           controlsSize={tileControlsSize}
           showLabel={showTileLabels}
           labelPlacement={tileLabelPlacement}
-          onTogglePlay={() => stream && togglePlay(stream)}
-          onToggleMute={() => stream && toggleMute(stream)}
-          onFullscreen={() => stream && setFullscreenStream(stream)}
-          onClick={() => stream && handleTileClickInternal(stream, index)}
-          onError={error => {
-            if (stream) {
-              onStreamError?.(error, stream);
-            }
-          }}
+          onTogglePlay={handleTogglePlay}
+          onToggleMute={handleToggleMute}
+          onFullscreen={handleFullscreen}
+          onClick={handleTileClickById}
+          onError={handleStreamError}
           className={cn('w-full h-full', options.className)}
           style={options.style}
         />
       );
     },
     [
-      getTileState,
+      tileState,
+      autoPlay,
+      muted,
       showTileControls,
       showTileLabels,
       tileControlsSize,
-      togglePlay,
-      toggleMute,
-      onStreamError,
-      handleTileClickInternal,
       tileLabelPlacement,
+      handleTogglePlay,
+      handleToggleMute,
+      handleFullscreen,
+      handleTileClickById,
+      handleStreamError,
     ]
   );
 
@@ -489,7 +520,7 @@ export const LiveVideos: React.FC<LiveVideosProps> = ({
           isOpen={!!fullscreenStream}
           stream={fullscreenStream}
           isPlaying={true}
-          isMuted={getTileState(fullscreenStream).muted}
+          isMuted={tileState[fullscreenStream.id]?.muted ?? muted}
           onClose={() => setFullscreenStream(null)}
           onError={error => onStreamError?.(error, fullscreenStream)}
         />

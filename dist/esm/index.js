@@ -1,5 +1,5 @@
 import { jsxs, jsx, Fragment } from 'react/jsx-runtime';
-import React, { useState, useCallback, useMemo, useRef, useEffect, createContext, useContext } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect, createContext, useContext, memo } from 'react';
 import { Tooltip, Button, Typography, Modal, Card, Switch, ConfigProvider, Popover, Spin, Alert, Row, Col, Image, Upload, message, Select, Space, Divider, Progress, Radio } from 'antd';
 export { Button, Card, Modal, Progress, Tooltip, Typography } from 'antd';
 import { PauseOutlined, PlayCircleOutlined, MutedOutlined, SoundOutlined, ArrowsAltOutlined, ReloadOutlined, ShrinkOutlined, AppstoreOutlined, CloseOutlined, CameraOutlined, CheckCircleOutlined, DeleteOutlined, UploadOutlined, StopOutlined, VideoCameraOutlined } from '@ant-design/icons';
@@ -1307,9 +1307,10 @@ const Tree = ({ data, title, titleIcon, searchable = true, searchPlaceholder = '
     return (jsxs("div", { className: cn('bg-white min-w-[260px] h-full px-4 box-border border-r border-gray-300 text-sm text-gray-800', className), style: style, children: [title && (jsx("div", { className: "border-b border-gray-200 mb-2", children: jsxs("div", { className: "px-2 py-2 font-bold text-lg text-[#05162B] flex items-center gap-2", children: [titleIcon ? titleIcon : jsx(HiVideoCamera, { size: 22 }), title] }) })), searchable && (jsx(TreeSearch, { value: searchTerm, onChange: setSearchTerm, placeholder: searchPlaceholder })), jsx("div", { className: "overflow-y-auto max-h-[calc(100vh-140px)] mt-2", children: filteredData.length === 0 ? (jsx("div", { className: "text-gray-500 px-2 py-2 text-sm italic", children: searchTerm ? `No results found` : emptyMessage })) : (jsx("div", { children: filteredData.map(node => (jsx(TreeNodeComponent, { node: node, level: 0, isSelected: internalSelectedKeys.includes(node.key), onLeafClick: handleLeafClick, onNodeToggle: handleNodeToggle, onPinToggle: onPinToggle, onSelectionChange: handleSelectionChange, path: [], searchTerm: searchTerm, highlightSearch: highlightSearch, renderNode: renderNode, showExpandIcons: showExpandIcons, selectable: selectable, forceExpand: searchTerm.length > 0, maxPinnedItems: maxPinnedItems, currentPinnedCount: currentPinnedCount, alwaysShowPinIcons: alwaysShowPinIcons }, node.key))) })) })] }));
 };
 
-const LiveVideoTile = ({ stream, index, isPrimary = false, isPlaying, isMuted, showControls, controlsSize, showLabel, labelPlacement = 'top', onTogglePlay, onToggleMute, onFullscreen, onClick, onError, className, style, }) => {
+const LiveVideoTileInner = ({ stream, index, isPrimary = false, isPlaying, isMuted, showControls, controlsSize, showLabel, labelPlacement = 'top', onTogglePlay, onToggleMute, onFullscreen, onClick, onError, className, style, }) => {
     const videoElementRef = useRef(null);
     const hasStream = !!stream && !!stream.url;
+    const streamId = stream?.id ?? '';
     useEffect(() => {
         const video = videoElementRef.current;
         if (!video)
@@ -1334,17 +1335,55 @@ const LiveVideoTile = ({ stream, index, isPrimary = false, isPlaying, isMuted, s
             video.pause();
         }
     }, [isPlaying]);
-    const handleExposeVideoRef = (video) => {
+    const handleExposeVideoRef = useCallback((video) => {
         videoElementRef.current = video;
-    };
-    return (jsxs("div", { className: cn('relative overflow-hidden bg-black rounded-md isolate', isPrimary ? 'shadow-[0_0_0_2px_rgba(67,228,255,0.35)]' : '', className), style: style, onClick: onClick, children: [hasStream ? (jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: false, objectFit: "cover", exposeVideoRef: handleExposeVideoRef, onError: error => {
-                    if (onError && stream) {
-                        onError(error);
-                    }
-                } }, stream?.id ?? index)) : (jsx("div", { className: "flex items-center justify-center w-full h-full bg-black text-xs text-gray-300", children: "No Video" })), showLabel && (jsx("div", { className: cn('pointer-events-none absolute left-0 right-0 flex items-center justify-between px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-[1px]', labelPlacement === 'bottom'
+    }, []);
+    const handleTogglePlay = useCallback(() => {
+        if (streamId)
+            onTogglePlay(streamId);
+    }, [streamId, onTogglePlay]);
+    const handleToggleMute = useCallback(() => {
+        if (streamId)
+            onToggleMute(streamId);
+    }, [streamId, onToggleMute]);
+    const handleFullscreen = useCallback(() => {
+        if (streamId)
+            onFullscreen(streamId);
+    }, [streamId, onFullscreen]);
+    const handleClick = useCallback(() => {
+        if (streamId && onClick)
+            onClick(streamId);
+    }, [streamId, onClick]);
+    const handleError = useCallback((error) => {
+        if (onError && streamId) {
+            onError(error, streamId);
+        }
+    }, [onError, streamId]);
+    return (jsxs("div", { className: cn('relative overflow-hidden bg-black rounded-md isolate', isPrimary ? 'shadow-[0_0_0_2px_rgba(67,228,255,0.35)]' : '', className), style: style, onClick: handleClick, children: [hasStream ? (jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: false, objectFit: "cover", exposeVideoRef: handleExposeVideoRef, onError: handleError }, stream?.id ?? index)) : (jsx("div", { className: "flex items-center justify-center w-full h-full bg-black text-xs text-gray-300", children: "No Video" })), showLabel && (jsx("div", { className: cn('pointer-events-none absolute left-0 right-0 flex items-center justify-between px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-[1px]', labelPlacement === 'bottom'
                     ? 'bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent'
-                    : 'top-0 bg-gradient-to-b from-black/75 via-black/40 to-transparent'), children: jsx("span", { children: stream?.title || `Camera ${index + 1}` }) })), showControls && hasStream && (jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onTogglePlay, onMuteUnmute: onToggleMute, onFullscreen: onFullscreen, showControls: true, size: controlsSize }))] }));
+                    : 'top-0 bg-gradient-to-b from-black/75 via-black/40 to-transparent'), children: jsx("span", { children: stream?.title || `Camera ${index + 1}` }) })), showControls && hasStream && (jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: handleTogglePlay, onMuteUnmute: handleToggleMute, onFullscreen: handleFullscreen, showControls: true, size: controlsSize }))] }));
 };
+// Memoize to prevent re-renders when parent state changes but this tile's props haven't
+const LiveVideoTile = memo(LiveVideoTileInner, (prevProps, nextProps) => {
+    // Only re-render if these specific props change
+    return (prevProps.stream?.id === nextProps.stream?.id &&
+        prevProps.stream?.url === nextProps.stream?.url &&
+        prevProps.stream?.title === nextProps.stream?.title &&
+        prevProps.index === nextProps.index &&
+        prevProps.isPrimary === nextProps.isPrimary &&
+        prevProps.isPlaying === nextProps.isPlaying &&
+        prevProps.isMuted === nextProps.isMuted &&
+        prevProps.showControls === nextProps.showControls &&
+        prevProps.controlsSize === nextProps.controlsSize &&
+        prevProps.showLabel === nextProps.showLabel &&
+        prevProps.labelPlacement === nextProps.labelPlacement &&
+        prevProps.className === nextProps.className &&
+        prevProps.onTogglePlay === nextProps.onTogglePlay &&
+        prevProps.onToggleMute === nextProps.onToggleMute &&
+        prevProps.onFullscreen === nextProps.onFullscreen &&
+        prevProps.onClick === nextProps.onClick &&
+        prevProps.onError === nextProps.onError);
+});
 
 const DEFAULT_PATTERN_DEFINITIONS = [
     { key: '1', label: '1-Up', category: 'Equal', tileCount: 1 },
@@ -1608,21 +1647,49 @@ const LiveVideos = ({ streams, displayStreams, loading = false, title = DEFAULT_
         const max = activeDefinition?.tileCount ?? renderStreams.length;
         return renderStreams.slice(0, max);
     }, [renderStreams, activeDefinition]);
-    const getTileState = useCallback((stream) => {
-        return tileState[stream.id] ?? { playing: autoPlay, muted };
-    }, [tileState, autoPlay, muted]);
-    const togglePlay = useCallback((stream) => {
+    // Create a stable stream map for quick lookups by ID
+    const streamMap = useMemo(() => {
+        const map = new Map();
+        limitedStreams.forEach((stream, index) => {
+            map.set(stream.id, { stream, index });
+        });
+        return map;
+    }, [limitedStreams]);
+    // Stable callback that takes streamId - won't change between renders
+    const handleTogglePlay = useCallback((streamId) => {
         setTileState(prev => {
-            const current = prev[stream.id] ?? { playing: autoPlay, muted };
-            return { ...prev, [stream.id]: { ...current, playing: !current.playing } };
+            const current = prev[streamId] ?? { playing: autoPlay, muted };
+            return { ...prev, [streamId]: { ...current, playing: !current.playing } };
         });
     }, [autoPlay, muted]);
-    const toggleMute = useCallback((stream) => {
+    // Stable callback that takes streamId - won't change between renders
+    const handleToggleMute = useCallback((streamId) => {
         setTileState(prev => {
-            const current = prev[stream.id] ?? { playing: autoPlay, muted };
-            return { ...prev, [stream.id]: { ...current, muted: !current.muted } };
+            const current = prev[streamId] ?? { playing: autoPlay, muted };
+            return { ...prev, [streamId]: { ...current, muted: !current.muted } };
         });
     }, [autoPlay, muted]);
+    // Stable callback for fullscreen - won't change between renders
+    const handleFullscreen = useCallback((streamId) => {
+        const entry = streamMap.get(streamId);
+        if (entry) {
+            setFullscreenStream(entry.stream);
+        }
+    }, [streamMap]);
+    // Stable callback for tile click - won't change between renders
+    const handleTileClickById = useCallback((streamId) => {
+        const entry = streamMap.get(streamId);
+        if (entry && onTileClick) {
+            onTileClick(entry.stream, entry.index);
+        }
+    }, [streamMap, onTileClick]);
+    // Stable callback for error - won't change between renders
+    const handleStreamError = useCallback((error, streamId) => {
+        const entry = streamMap.get(streamId);
+        if (entry && onStreamError) {
+            onStreamError(error, entry.stream);
+        }
+    }, [streamMap, onStreamError]);
     const handlePatternSelect = useCallback((next) => {
         if (!availableKeys.includes(next))
             return;
@@ -1631,28 +1698,26 @@ const LiveVideos = ({ streams, displayStreams, loading = false, title = DEFAULT_
         }
         onPatternChange?.(next);
     }, [availableKeys, isControlled, onPatternChange]);
-    const handleTileClickInternal = useCallback((stream, index) => {
-        onTileClick?.(stream, index);
-    }, [onTileClick]);
     const renderTile = useCallback((stream, index, options = {}) => {
         const tileKey = options.key ?? stream?.id ?? `slot-${index}`;
-        const state = stream ? getTileState(stream) : { playing: false, muted: true };
+        const state = stream
+            ? (tileState[stream.id] ?? { playing: autoPlay, muted })
+            : { playing: false, muted: true };
         const hasStream = !!stream;
-        return (jsx(LiveVideoTile, { stream: stream, index: index, isPrimary: options.isPrimary, isPlaying: state.playing && hasStream, isMuted: state.muted || !hasStream, showControls: showTileControls && hasStream, controlsSize: tileControlsSize, showLabel: showTileLabels, labelPlacement: tileLabelPlacement, onTogglePlay: () => stream && togglePlay(stream), onToggleMute: () => stream && toggleMute(stream), onFullscreen: () => stream && setFullscreenStream(stream), onClick: () => stream && handleTileClickInternal(stream, index), onError: error => {
-                if (stream) {
-                    onStreamError?.(error, stream);
-                }
-            }, className: cn('w-full h-full', options.className), style: options.style }, tileKey));
+        return (jsx(LiveVideoTile, { stream: stream, index: index, isPrimary: options.isPrimary, isPlaying: state.playing && hasStream, isMuted: state.muted || !hasStream, showControls: showTileControls && hasStream, controlsSize: tileControlsSize, showLabel: showTileLabels, labelPlacement: tileLabelPlacement, onTogglePlay: handleTogglePlay, onToggleMute: handleToggleMute, onFullscreen: handleFullscreen, onClick: handleTileClickById, onError: handleStreamError, className: cn('w-full h-full', options.className), style: options.style }, tileKey));
     }, [
-        getTileState,
+        tileState,
+        autoPlay,
+        muted,
         showTileControls,
         showTileLabels,
         tileControlsSize,
-        togglePlay,
-        toggleMute,
-        onStreamError,
-        handleTileClickInternal,
         tileLabelPlacement,
+        handleTogglePlay,
+        handleToggleMute,
+        handleFullscreen,
+        handleTileClickById,
+        handleStreamError,
     ]);
     const patternContent = useMemo(() => {
         if (loading) {
@@ -1791,7 +1856,7 @@ const LiveVideos = ({ streams, displayStreams, loading = false, title = DEFAULT_
                                     return (jsx("button", { type: "button", onClick: () => handlePatternSelect(patternKey), className: cn('rounded-md border px-2 py-1 text-xs font-semibold transition-colors', activePattern === patternKey
                                             ? 'border-[#1f4ea8] bg-[#1f4ea8] text-white shadow-sm'
                                             : 'border-slate-300 bg-white text-[#0b1f3a] hover:bg-slate-100'), children: shortcutLabel }, patternKey));
-                                }) }))] }))] })), jsx("div", { className: "flex-1 min-h-[240px]", children: patternContent }), fullscreenStream && (jsx(FullscreenModal, { isOpen: !!fullscreenStream, stream: fullscreenStream, isPlaying: true, isMuted: getTileState(fullscreenStream).muted, onClose: () => setFullscreenStream(null), onError: error => onStreamError?.(error, fullscreenStream) }))] }));
+                                }) }))] }))] })), jsx("div", { className: "flex-1 min-h-[240px]", children: patternContent }), fullscreenStream && (jsx(FullscreenModal, { isOpen: !!fullscreenStream, stream: fullscreenStream, isPlaying: true, isMuted: tileState[fullscreenStream.id]?.muted ?? muted, onClose: () => setFullscreenStream(null), onError: error => onStreamError?.(error, fullscreenStream) }))] }));
 };
 
 // Constants

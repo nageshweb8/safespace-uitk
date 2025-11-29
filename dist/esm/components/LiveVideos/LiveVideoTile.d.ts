@@ -10,13 +10,13 @@ export interface LiveVideoTileProps {
     controlsSize: 'small' | 'medium';
     showLabel: boolean;
     labelPlacement?: 'top' | 'bottom';
-    onTogglePlay: () => void;
-    onToggleMute: () => void;
-    onFullscreen: () => void;
-    onClick?: () => void;
-    onError?: (error: Error) => void;
+    onTogglePlay: (streamId: string) => void;
+    onToggleMute: (streamId: string) => void;
+    onFullscreen: (streamId: string) => void;
+    onClick?: (streamId: string) => void;
+    onError?: (error: Error, streamId: string) => void;
     className?: string;
     style?: React.CSSProperties;
 }
-export declare const LiveVideoTile: React.FC<LiveVideoTileProps>;
+export declare const LiveVideoTile: React.NamedExoticComponent<LiveVideoTileProps>;
 //# sourceMappingURL=LiveVideoTile.d.ts.map

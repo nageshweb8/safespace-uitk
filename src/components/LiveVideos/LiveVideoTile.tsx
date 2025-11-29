@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { memo, useEffect, useRef, useCallback } from 'react';
 import { CameraStream } from '../../types/video';
 import { VideoPlayer } from '../VideoPlayer';
 import { VideoControls } from '../shared/VideoControls';
@@ -14,16 +14,16 @@ export interface LiveVideoTileProps {
   controlsSize: 'small' | 'medium';
   showLabel: boolean;
   labelPlacement?: 'top' | 'bottom';
-  onTogglePlay: () => void;
-  onToggleMute: () => void;
-  onFullscreen: () => void;
-  onClick?: () => void;
-  onError?: (error: Error) => void;
+  onTogglePlay: (streamId: string) => void;
+  onToggleMute: (streamId: string) => void;
+  onFullscreen: (streamId: string) => void;
+  onClick?: (streamId: string) => void;
+  onError?: (error: Error, streamId: string) => void;
   className?: string;
   style?: React.CSSProperties;
 }
 
-export const LiveVideoTile: React.FC<LiveVideoTileProps> = ({
+const LiveVideoTileInner: React.FC<LiveVideoTileProps> = ({
   stream,
   index,
   isPrimary = false,
@@ -43,6 +43,7 @@ export const LiveVideoTile: React.FC<LiveVideoTileProps> = ({
 }) => {
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const hasStream = !!stream && !!stream.url;
+  const streamId = stream?.id ?? '';
 
   useEffect(() => {
     const video = videoElementRef.current;
@@ -68,9 +69,31 @@ export const LiveVideoTile: React.FC<LiveVideoTileProps> = ({
     }
   }, [isPlaying]);
 
-  const handleExposeVideoRef = (video: HTMLVideoElement | null) => {
+  const handleExposeVideoRef = useCallback((video: HTMLVideoElement | null) => {
     videoElementRef.current = video;
-  };
+  }, []);
+
+  const handleTogglePlay = useCallback(() => {
+    if (streamId) onTogglePlay(streamId);
+  }, [streamId, onTogglePlay]);
+
+  const handleToggleMute = useCallback(() => {
+    if (streamId) onToggleMute(streamId);
+  }, [streamId, onToggleMute]);
+
+  const handleFullscreen = useCallback(() => {
+    if (streamId) onFullscreen(streamId);
+  }, [streamId, onFullscreen]);
+
+  const handleClick = useCallback(() => {
+    if (streamId && onClick) onClick(streamId);
+  }, [streamId, onClick]);
+
+  const handleError = useCallback((error: Error) => {
+    if (onError && streamId) {
+      onError(error, streamId);
+    }
+  }, [onError, streamId]);
 
   return (
     <div
@@ -80,7 +103,7 @@ export const LiveVideoTile: React.FC<LiveVideoTileProps> = ({
         className
       )}
       style={style}
-      onClick={onClick}
+      onClick={handleClick}
     >
       {hasStream ? (
         <VideoPlayer
@@ -91,11 +114,7 @@ export const LiveVideoTile: React.FC<LiveVideoTileProps> = ({
           controls={false}
           objectFit="cover"
           exposeVideoRef={handleExposeVideoRef}
-          onError={error => {
-            if (onError && stream) {
-              onError(error);
-            }
-          }}
+          onError={handleError}
         />
       ) : (
         <div className="flex items-center justify-center w-full h-full bg-black text-xs text-gray-300">
@@ -120,9 +139,9 @@ export const LiveVideoTile: React.FC<LiveVideoTileProps> = ({
         <VideoControls
           isPlaying={isPlaying}
           isMuted={isMuted}
-          onPlayPause={onTogglePlay}
-          onMuteUnmute={onToggleMute}
-          onFullscreen={onFullscreen}
+          onPlayPause={handleTogglePlay}
+          onMuteUnmute={handleToggleMute}
+          onFullscreen={handleFullscreen}
           showControls
           size={controlsSize}
         />
@@ -130,3 +149,27 @@ export const LiveVideoTile: React.FC<LiveVideoTileProps> = ({
     </div>
   );
 };
+
+// Memoize to prevent re-renders when parent state changes but this tile's props haven't
+export const LiveVideoTile = memo(LiveVideoTileInner, (prevProps, nextProps) => {
+  // Only re-render if these specific props change
+  return (
+    prevProps.stream?.id === nextProps.stream?.id &&
+    prevProps.stream?.url === nextProps.stream?.url &&
+    prevProps.stream?.title === nextProps.stream?.title &&
+    prevProps.index === nextProps.index &&
+    prevProps.isPrimary === nextProps.isPrimary &&
+    prevProps.isPlaying === nextProps.isPlaying &&
+    prevProps.isMuted === nextProps.isMuted &&
+    prevProps.showControls === nextProps.showControls &&
+    prevProps.controlsSize === nextProps.controlsSize &&
+    prevProps.showLabel === nextProps.showLabel &&
+    prevProps.labelPlacement === nextProps.labelPlacement &&
+    prevProps.className === nextProps.className &&
+    prevProps.onTogglePlay === nextProps.onTogglePlay &&
+    prevProps.onToggleMute === nextProps.onToggleMute &&
+    prevProps.onFullscreen === nextProps.onFullscreen &&
+    prevProps.onClick === nextProps.onClick &&
+    prevProps.onError === nextProps.onError
+  );
+});
