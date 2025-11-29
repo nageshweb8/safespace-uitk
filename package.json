@@ -1,6 +1,6 @@
 {
   "name": "@safespace/uitk",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "SafeSpace Enterprise UI Component Library",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -62,7 +62,8 @@
   "peerDependencies": {
     "antd": "^5.27.0",
     "react": ">=16.8.0",
-    "react-dom": ">=16.8.0"
+    "react-dom": ">=16.8.0",
+    "react-media-recorder": "^1.7.0"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^7.6.0",

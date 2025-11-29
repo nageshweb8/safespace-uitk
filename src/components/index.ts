@@ -6,6 +6,7 @@ export * from './shared';
 export * from './ThemeProvider';
 export * from './Tree';
 export * from './LiveVideos';
+export * from './ProfileEmbedding';
 
 // Re-export commonly used Ant Design components with SafeSpace styling
 export { Button, Card, Modal, Progress, Typography, Tooltip } from 'antd';

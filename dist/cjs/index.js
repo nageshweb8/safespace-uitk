@@ -10,6 +10,7 @@ var tailwindMerge = require('tailwind-merge');
 var hi2 = require('react-icons/hi2');
 var fi = require('react-icons/fi');
 var pi = require('react-icons/pi');
+var reactMediaRecorder = require('react-media-recorder');
 
 function useVideoPlayer(streams, initialAutoPlay = true, initialMuted = true, onStreamChange, onError) {
     const [activeStreamIndex, setActiveStreamIndex] = React.useState(0);
@@ -1794,6 +1795,428 @@ const LiveVideos = ({ streams, displayStreams, loading = false, title = DEFAULT_
                                 }) }))] }))] })), jsxRuntime.jsx("div", { className: "flex-1 min-h-[240px]", children: patternContent }), fullscreenStream && (jsxRuntime.jsx(FullscreenModal, { isOpen: !!fullscreenStream, stream: fullscreenStream, isPlaying: true, isMuted: getTileState(fullscreenStream).muted, onClose: () => setFullscreenStream(null), onError: error => onStreamError?.(error, fullscreenStream) }))] }));
 };
 
+// Constants
+const DEFAULT_MAX_FILE_SIZE_MB = 5;
+const DEFAULT_IMAGE_PREVIEW_HEIGHT = 200;
+const JPEG_QUALITY = 0.95;
+const BUTTON_SIZE = { width: '48px', height: '38px' };
+const FACE_GUIDE_SIZE = { width: '300px', height: '400px' };
+const CAMERA_CONSTRAINTS = {
+    video: {
+        facingMode: 'user',
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+    }
+};
+const MODAL_RENDER_DELAY = 100;
+// Angle instruction mapping
+const ANGLE_INSTRUCTIONS = {
+    front: '👤 Look straight at the camera',
+    left: '◀️ Turn your face to the left (45°)',
+    right: '▶️ Turn your face to the right (45°)'
+};
+const DEFAULT_GUIDELINES = [
+    'Face should be clearly visible and well-lit',
+    'Remove glasses, hats, or face coverings if possible',
+    'Look directly at the camera for front view',
+    'Turn head 45° for left and right views'
+];
+/**
+ * BasicModeCapture Component
+ *
+ * Capture 1-3 static images for basic profile embedding.
+ * Supports file upload and camera capture.
+ */
+const BasicModeCapture = ({ value = { front: null, left: null, right: null }, onChange, user = null, maxFileSizeMB = DEFAULT_MAX_FILE_SIZE_MB, imagePreviewHeight = DEFAULT_IMAGE_PREVIEW_HEIGHT, alertMessage = 'Basic Profile Embedding', alertDescription = 'Please upload clear, well-lit images of the face. Front view is required. Left and right views are optional but recommended for better recognition.', hideAlert = false, hideGuidelines = false, guidelines = DEFAULT_GUIDELINES, className = '' }) => {
+    // Initialize images from value prop or user data (for edit mode)
+    const getInitialImages = () => {
+        // Priority 1: value prop (controlled component)
+        if (value?.front || value?.left || value?.right) {
+            return {
+                front: value.front || null,
+                left: value.left || null,
+                right: value.right || null
+            };
+        }
+        // Priority 2: user.filePathUrl (edit mode - load existing image)
+        if (user?.filePathUrl) {
+            return {
+                front: {
+                    url: user.filePathUrl,
+                    name: 'front-view.jpg',
+                    file: null,
+                    isExisting: true
+                },
+                left: null,
+                right: null
+            };
+        }
+        // Default: empty state
+        return { front: null, left: null, right: null };
+    };
+    const [images, setImages] = React.useState(getInitialImages());
+    // Sync with parent value prop changes
+    React.useEffect(() => {
+        if (value && Object.keys(value).length > 0) {
+            setImages(value);
+        }
+    }, [value]);
+    // Update images when user prop changes (edit mode) - Only on mount
+    React.useEffect(() => {
+        if (user?.filePathUrl && !images.front) {
+            setImages({
+                front: {
+                    url: user.filePathUrl,
+                    name: 'front-view.jpg',
+                    file: null,
+                    isExisting: true
+                },
+                left: null,
+                right: null
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.filePathUrl]);
+    // Camera capture state
+    const [cameraModalOpen, setCameraModalOpen] = React.useState(false);
+    const [currentAngle, setCurrentAngle] = React.useState(null);
+    const [cameraStream, setCameraStream] = React.useState(null);
+    const videoRef = React.useRef(null);
+    const canvasRef = React.useRef(null);
+    // Helper: Validate image file
+    const validateImageFile = (file) => {
+        if (!file) {
+            return { valid: false, error: 'No file provided' };
+        }
+        const isImage = file.type.startsWith('image/');
+        if (!isImage) {
+            return { valid: false, error: 'Please upload an image file' };
+        }
+        const isValidSize = file.size / 1024 / 1024 < maxFileSizeMB;
+        if (!isValidSize) {
+            return { valid: false, error: `Image must be smaller than ${maxFileSizeMB}MB` };
+        }
+        return { valid: true };
+    };
+    // Helper: Create image data object
+    const createImageData = (file, url) => ({
+        file,
+        url,
+        name: file.name
+    });
+    // Helper: Update images state and notify parent
+    const updateImages = (angle, imageData) => {
+        const newImages = {
+            ...images,
+            [angle]: imageData
+        };
+        setImages(newImages);
+        onChange?.(newImages);
+    };
+    // Helper: Get formatted angle title
+    const getAngleTitle = (angle) => {
+        return angle ? angle.charAt(0).toUpperCase() + angle.slice(1) : '';
+    };
+    const handleImageUpload = (angle, file) => {
+        const validation = validateImageFile(file);
+        if (!validation.valid) {
+            antd.message.error(validation.error || 'Invalid file');
+            return false;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const imageData = createImageData(file, e.target?.result);
+            updateImages(angle, imageData);
+        };
+        reader.readAsDataURL(file);
+        return false; // Prevent auto upload
+    };
+    const handleRemoveImage = (angle) => {
+        updateImages(angle, null);
+    };
+    // Camera capture functions
+    const openCamera = async (angle) => {
+        setCurrentAngle(angle);
+        setCameraModalOpen(true);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS);
+            setCameraStream(stream);
+            setTimeout(() => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            }, MODAL_RENDER_DELAY);
+        }
+        catch (error) {
+            antd.message.error('Unable to access camera. Please check permissions.');
+            console.error('Camera access error:', error);
+            setCameraModalOpen(false);
+        }
+    };
+    const closeCamera = () => {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            setCameraStream(null);
+        }
+        setCameraModalOpen(false);
+        setCurrentAngle(null);
+    };
+    const captureImage = () => {
+        if (!videoRef.current || !canvasRef.current || !currentAngle)
+            return;
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                antd.message.error('Failed to capture image');
+                return;
+            }
+            const url = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+            const file = new File([blob], `${currentAngle}-view-${Date.now()}.jpg`, { type: 'image/jpeg' });
+            const imageData = createImageData(file, url);
+            updateImages(currentAngle, imageData);
+            antd.message.success('Image captured successfully!');
+            closeCamera();
+        }, 'image/jpeg', JPEG_QUALITY);
+    };
+    const renderImageCapture = (angle, label, required = false) => {
+        const imageData = images[angle];
+        const hasImage = !!imageData;
+        return (jsxRuntime.jsx(antd.Col, { xs: 24, md: 8, children: jsxRuntime.jsx("div", { className: "border-2 border-dashed border-gray-300 rounded-lg p-4 h-full", children: jsxRuntime.jsxs("div", { className: "flex flex-col items-center gap-3", children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between w-full", children: [jsxRuntime.jsxs("span", { className: "font-medium", children: [label, required && jsxRuntime.jsx("span", { className: "text-red-500 ml-1", children: "*" })] }), hasImage && (jsxRuntime.jsx(icons.CheckCircleOutlined, { className: "text-green-500" }))] }), hasImage ? (jsxRuntime.jsxs("div", { className: "w-full", children: [jsxRuntime.jsx(antd.Image, { src: imageData.url, alt: label, width: "100%", height: imagePreviewHeight, style: { objectFit: 'cover', borderRadius: '8px' } }), jsxRuntime.jsx(antd.Button, { type: "text", danger: true, icon: jsxRuntime.jsx(icons.DeleteOutlined, {}), onClick: () => handleRemoveImage(angle), className: "w-full mt-2", children: "Remove" })] })) : (jsxRuntime.jsxs("div", { className: "w-full", children: [jsxRuntime.jsx("div", { className: "bg-gray-100 rounded-lg flex items-center justify-center mb-3", style: { height: `${imagePreviewHeight}px` }, children: jsxRuntime.jsx(icons.CameraOutlined, { style: { fontSize: '48px', color: '#ccc' } }) }), jsxRuntime.jsxs("div", { className: "flex items-center justify-center gap-2", children: [jsxRuntime.jsx(antd.Tooltip, { title: "Take Photo", placement: "bottom", children: jsxRuntime.jsx(antd.Button, { icon: jsxRuntime.jsx(icons.CameraOutlined, {}), type: required && !hasImage ? 'primary' : 'default', size: "large", onClick: () => openCamera(angle), className: "flex items-center justify-center", style: BUTTON_SIZE }) }), jsxRuntime.jsx(antd.Upload, { accept: "image/*", showUploadList: false, beforeUpload: (file) => handleImageUpload(angle, file), children: jsxRuntime.jsx(antd.Tooltip, { title: "Upload from Device", placement: "bottom", children: jsxRuntime.jsx(antd.Button, { icon: jsxRuntime.jsx(icons.UploadOutlined, {}), size: "large", className: "flex items-center justify-center", style: BUTTON_SIZE }) }) })] })] }))] }) }) }));
+    };
+    return (jsxRuntime.jsxs("div", { className: `safespace-basic-mode-capture ${className}`, children: [!hideAlert && (jsxRuntime.jsx(antd.Alert, { message: alertMessage, description: alertDescription, type: "info", showIcon: true, className: "mb-4" })), jsxRuntime.jsxs(antd.Row, { gutter: [16, 16], children: [renderImageCapture('front', 'Front View', true), renderImageCapture('left', 'Left View', false), renderImageCapture('right', 'Right View', false)] }), !hideGuidelines && (jsxRuntime.jsx("div", { className: "mt-4", children: jsxRuntime.jsx(antd.Alert, { message: "Image Guidelines", description: jsxRuntime.jsxs("ul", { className: "list-disc list-inside space-y-1 mt-2", children: [guidelines.map((guideline, index) => (jsxRuntime.jsx("li", { children: guideline }, index))), jsxRuntime.jsxs("li", { children: ["Maximum file size: ", maxFileSizeMB, "MB per image"] })] }), type: "warning", showIcon: true }) })), jsxRuntime.jsxs(antd.Modal, { title: `Capture ${getAngleTitle(currentAngle)} View`, open: cameraModalOpen, onCancel: closeCamera, width: 800, footer: [
+                    jsxRuntime.jsx(antd.Button, { onClick: closeCamera, icon: jsxRuntime.jsx(icons.CloseOutlined, {}), children: "Cancel" }, "cancel"),
+                    jsxRuntime.jsx(antd.Button, { type: "primary", onClick: captureImage, icon: jsxRuntime.jsx(icons.CameraOutlined, {}), children: "Capture Photo" }, "capture")
+                ], children: [jsxRuntime.jsx("div", { className: "camera-preview-container", children: jsxRuntime.jsxs("div", { className: "relative bg-black rounded-lg overflow-hidden", style: { aspectRatio: '16/9' }, children: [jsxRuntime.jsx("video", { ref: videoRef, autoPlay: true, playsInline: true, muted: true, className: "w-full h-full object-cover" }), jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center pointer-events-none", children: jsxRuntime.jsx("div", { className: "border-4 border-white border-dashed rounded-full opacity-50", style: FACE_GUIDE_SIZE }) }), jsxRuntime.jsx("div", { className: "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6", children: jsxRuntime.jsx("p", { className: "text-white text-center text-lg", children: currentAngle ? ANGLE_INSTRUCTIONS[currentAngle] : '' }) })] }) }), jsxRuntime.jsx("canvas", { ref: canvasRef, style: { display: 'none' } })] })] }));
+};
+
+// Default guidance sequence (as per meeting discussion)
+const DEFAULT_GUIDANCE_STEPS = [
+    { direction: 'front', duration: 5, message: 'Look straight at the camera', icon: '👤' },
+    { direction: 'left', duration: 4, message: 'Slowly turn your face to the left', icon: '◀️' },
+    { direction: 'right', duration: 4, message: 'Slowly turn your face to the right', icon: '▶️' },
+    { direction: 'up', duration: 4, message: 'Tilt your head slightly up', icon: '⬆️' },
+    { direction: 'down', duration: 4, message: 'Tilt your head slightly down', icon: '⬇️' }
+];
+// Constants
+const VIDEO_ASPECT_RATIO = '16/9';
+const DEFAULT_OVAL_DIMENSIONS = { width: 300, height: 380 };
+const DEFAULT_SYSTEM_CAMERA = {
+    id: 'default-system-camera',
+    name: 'Default System Camera',
+    cameraName: 'Default System Camera'
+};
+/**
+ * AdvancedModeCapture Component
+ *
+ * Record video with guided prompts for advanced profile embedding.
+ * Features 5-step guidance sequence and live preview.
+ */
+const AdvancedModeCapture = ({ onChange, registrationCameras = [], instructionPosition = 'bottom', guidanceSteps = DEFAULT_GUIDANCE_STEPS, alertMessage = 'Advanced Profile Embedding', alertDescription = 'Record a video following the on-screen guidance. Our AI service will analyze your video for facial recognition quality and provide feedback.', hideAlert = false, hideInstructions = false, ovalDimensions = DEFAULT_OVAL_DIMENSIONS, className = '' }) => {
+    // Add default system camera if no cameras provided
+    const availableCameras = registrationCameras.length > 0
+        ? registrationCameras
+        : [DEFAULT_SYSTEM_CAMERA];
+    // Calculate max recording duration from guidance steps
+    const maxRecordingDuration = guidanceSteps.reduce((sum, step) => sum + step.duration, 0);
+    // State management
+    const [selectedCamera, setSelectedCamera] = React.useState(null);
+    const [recordingTime, setRecordingTime] = React.useState(0);
+    const [currentGuidanceStep, setCurrentGuidanceStep] = React.useState(0);
+    // Refs
+    const videoRef = React.useRef(null);
+    // react-media-recorder hook
+    const { status, startRecording, pauseRecording, resumeRecording, stopRecording, mediaBlobUrl, previewStream, clearBlobUrl } = reactMediaRecorder.useReactMediaRecorder({
+        video: (selectedCamera && selectedCamera !== 'default-system-camera')
+            ? { deviceId: { exact: selectedCamera } }
+            : true,
+        audio: false,
+        onStop: (blobUrl, blob) => {
+            handleRecordingComplete(blobUrl, blob);
+        }
+    });
+    // Connect preview stream to video element
+    React.useEffect(() => {
+        if (previewStream && videoRef.current && status === 'recording') {
+            videoRef.current.srcObject = previewStream;
+        }
+    }, [previewStream, status]);
+    // Timer for recording
+    React.useEffect(() => {
+        if (status !== 'recording') {
+            return;
+        }
+        const interval = setInterval(() => {
+            setRecordingTime(prev => {
+                const newTime = prev + 1;
+                // Calculate current guidance step
+                let elapsed = 0;
+                for (let i = 0; i < guidanceSteps.length; i++) {
+                    elapsed += guidanceSteps[i].duration;
+                    if (newTime < elapsed) {
+                        setCurrentGuidanceStep(i);
+                        break;
+                    }
+                }
+                // Auto-stop at max duration
+                if (newTime >= maxRecordingDuration) {
+                    stopRecording();
+                }
+                return newTime;
+            });
+        }, 1000);
+        return () => {
+            clearInterval(interval);
+        };
+    }, [status, maxRecordingDuration, stopRecording, guidanceSteps]);
+    // Helper to reset recording state
+    const resetRecordingState = React.useCallback(() => {
+        setRecordingTime(0);
+        setCurrentGuidanceStep(0);
+    }, []);
+    // Format time display
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+    // Calculate progress percentage
+    const getProgress = () => {
+        return Math.round((recordingTime / maxRecordingDuration) * 100);
+    };
+    // Handlers
+    const handleCameraSelect = (cameraId) => {
+        setSelectedCamera(cameraId);
+    };
+    const handleStartRecording = () => {
+        if (!selectedCamera) {
+            antd.message.warning('Please select a camera first');
+            return;
+        }
+        resetRecordingState();
+        startRecording();
+        antd.message.success('Recording started! Follow the guidance prompts.');
+    };
+    const handlePauseRecording = () => {
+        pauseRecording();
+        antd.message.info('Recording paused');
+    };
+    const handleResumeRecording = () => {
+        resumeRecording();
+        antd.message.info('Recording resumed');
+    };
+    const handleRecordingComplete = (blobUrl, blob) => {
+        if (onChange && selectedCamera) {
+            onChange({
+                videoBlob: blob,
+                videoBlobUrl: blobUrl,
+                duration: recordingTime,
+                cameraId: selectedCamera,
+                timestamp: new Date().toISOString()
+            });
+        }
+        antd.message.success(`Recording complete! Duration: ${formatTime(recordingTime)}`);
+    };
+    const handleRetake = () => {
+        clearBlobUrl();
+        resetRecordingState();
+        onChange?.(null);
+        antd.message.info('Ready to record again');
+    };
+    const handleUseVideo = () => {
+        if (!mediaBlobUrl) {
+            antd.message.error('No video recorded');
+            return;
+        }
+        antd.message.success('Video accepted! This will be used for profile embedding.');
+    };
+    const IdleStatusMessage = ({ icon: IconElement, message: msg, status: statusMsg, statusType = 'info' }) => (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center text-white", children: jsxRuntime.jsxs("div", { className: "text-center", children: [IconElement && jsxRuntime.jsx(IconElement, { style: { fontSize: '64px', marginBottom: '16px' } }), jsxRuntime.jsx("p", { className: "text-lg", children: msg }), statusMsg && (jsxRuntime.jsxs("p", { className: `text-sm mt-2 ${statusType === 'success' ? 'text-green-400' :
+                        statusType === 'warning' ? 'text-yellow-400' :
+                            'text-blue-400'}`, children: [jsxRuntime.jsx(icons.CheckCircleOutlined, {}), " ", statusMsg] }))] }) }));
+    return (jsxRuntime.jsxs("div", { className: `safespace-advanced-mode-capture ${className}`, children: [!hideAlert && (jsxRuntime.jsx(antd.Alert, { message: alertMessage, description: alertDescription, type: "info", showIcon: true, className: "mb-4" })), jsxRuntime.jsxs("div", { className: "mb-4", children: [jsxRuntime.jsxs("label", { className: "block mb-2 font-medium", children: ["Select Registration Camera ", jsxRuntime.jsx("span", { className: "text-red-500", children: "*" })] }), jsxRuntime.jsx(antd.Select, { placeholder: "Choose a camera", style: { width: '100%' }, value: selectedCamera, onChange: handleCameraSelect, disabled: status !== 'idle', size: "large", children: availableCameras.map(camera => (jsxRuntime.jsx(antd.Select.Option, { value: camera.id, children: jsxRuntime.jsxs(antd.Space, { children: [jsxRuntime.jsx(icons.CameraOutlined, {}), camera.name || camera.cameraName] }) }, camera.id))) })] }), jsxRuntime.jsx(antd.Divider, {}), jsxRuntime.jsxs("div", { className: "video-preview-container relative bg-black rounded-lg overflow-hidden mb-4", style: { aspectRatio: VIDEO_ASPECT_RATIO }, children: [status === 'idle' && !selectedCamera && (jsxRuntime.jsx(IdleStatusMessage, { icon: icons.CameraOutlined, message: "Select a camera to begin", status: null, statusType: "warning" })), status === 'idle' && selectedCamera && !mediaBlobUrl && (jsxRuntime.jsx(IdleStatusMessage, { icon: icons.PlayCircleOutlined, message: "Click Start Recording to begin", status: "Ready to record (Backend AI verification)", statusType: "success" })), (status === 'recording' || status === 'paused') && (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx("video", { ref: videoRef, autoPlay: true, muted: true, playsInline: true, className: "w-full h-full object-cover", style: { backgroundColor: '#000' } }), jsxRuntime.jsxs("div", { className: "absolute inset-0 pointer-events-none", children: [instructionPosition === 'top' ? (jsxRuntime.jsx("div", { className: "absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-6", children: jsxRuntime.jsxs("div", { className: "text-white", children: [jsxRuntime.jsxs("div", { className: "text-sm font-medium mb-1 flex items-center gap-2", children: [jsxRuntime.jsxs("span", { children: ["Step ", currentGuidanceStep + 1, " of ", guidanceSteps.length] }), jsxRuntime.jsx("span", { className: "text-2xl", children: guidanceSteps[currentGuidanceStep]?.icon })] }), jsxRuntime.jsx("div", { className: "text-2xl font-bold", children: guidanceSteps[currentGuidanceStep]?.message })] }) })) : (jsxRuntime.jsx("div", { className: "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6", children: jsxRuntime.jsxs("div", { className: "text-white", children: [jsxRuntime.jsx("div", { className: "text-2xl font-bold mb-2", children: guidanceSteps[currentGuidanceStep]?.message }), jsxRuntime.jsxs("div", { className: "text-sm font-medium flex items-center gap-2", children: [jsxRuntime.jsxs("span", { children: ["Step ", currentGuidanceStep + 1, " of ", guidanceSteps.length] }), jsxRuntime.jsx("span", { className: "text-2xl", children: guidanceSteps[currentGuidanceStep]?.icon })] })] }) })), jsxRuntime.jsx("div", { className: "absolute top-6 right-6 space-y-2", children: jsxRuntime.jsxs("div", { className: "flex items-center gap-2 bg-red-500 px-3 py-2 rounded-full", children: [jsxRuntime.jsx("div", { className: "w-3 h-3 bg-white rounded-full animate-pulse" }), jsxRuntime.jsxs("span", { className: "text-white font-medium", children: [formatTime(recordingTime), " / ", formatTime(maxRecordingDuration)] })] }) }), jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsx("div", { className: "rounded-full transition-all duration-300 border-green-400 shadow-[0_0_30px_rgba(34,197,94,0.5),0_0_60px_rgba(34,197,94,0.0)]", style: {
+                                                width: `${ovalDimensions.width}px`,
+                                                height: `${ovalDimensions.height}px`,
+                                                borderWidth: '4px',
+                                                borderStyle: 'solid'
+                                            } }) })] })] })), status === 'stopped' && mediaBlobUrl && (jsxRuntime.jsx("video", { src: mediaBlobUrl, controls: true, className: "w-full h-full object-cover" }))] }), (status === 'recording' || status === 'paused') && (jsxRuntime.jsx(antd.Progress, { percent: getProgress(), status: status === 'paused' ? 'exception' : 'active', strokeColor: {
+                    '0%': '#108ee9',
+                    '100%': '#87d068',
+                }, format: (percent) => `${percent}% (${formatTime(recordingTime)})`, className: "mb-4" })), jsxRuntime.jsxs("div", { className: "flex justify-center gap-3 mb-4", children: [(status === 'idle' || status === 'stopped') && !mediaBlobUrl && (jsxRuntime.jsx(antd.Button, { type: "primary", size: "large", icon: jsxRuntime.jsx(icons.PlayCircleOutlined, {}), onClick: handleStartRecording, disabled: !selectedCamera, children: "Start Recording" })), status === 'recording' && (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(antd.Button, { size: "large", icon: jsxRuntime.jsx(icons.PauseOutlined, {}), onClick: handlePauseRecording, children: "Pause" }), jsxRuntime.jsx(antd.Button, { danger: true, size: "large", icon: jsxRuntime.jsx(icons.StopOutlined, {}), onClick: stopRecording, children: "Stop" })] })), status === 'paused' && (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(antd.Button, { type: "primary", size: "large", icon: jsxRuntime.jsx(icons.PlayCircleOutlined, {}), onClick: handleResumeRecording, children: "Resume" }), jsxRuntime.jsx(antd.Button, { danger: true, size: "large", icon: jsxRuntime.jsx(icons.StopOutlined, {}), onClick: stopRecording, children: "Stop" })] })), status === 'stopped' && mediaBlobUrl && (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(antd.Button, { size: "large", icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), onClick: handleRetake, children: "Retake" }), jsxRuntime.jsx(antd.Button, { type: "primary", size: "large", icon: jsxRuntime.jsx(icons.CheckCircleOutlined, {}), onClick: handleUseVideo, children: "Use This Video" })] }))] }), !hideInstructions && status === 'idle' && !mediaBlobUrl && (jsxRuntime.jsx(antd.Alert, { message: "Recording Instructions", description: jsxRuntime.jsxs("ul", { className: "list-disc list-inside space-y-1 mt-2", children: [jsxRuntime.jsx("li", { children: "Position your face within the oval guide" }), jsxRuntime.jsxs("li", { children: ["Follow the on-screen prompts carefully (", guidanceSteps.length, " steps, ", maxRecordingDuration, " seconds total)"] }), jsxRuntime.jsx("li", { children: "Move your head slowly and smoothly" }), jsxRuntime.jsx("li", { children: "Good lighting is important for best results" }), jsxRuntime.jsx("li", { children: "The green status indicator shows recording is active" }), jsxRuntime.jsxs("li", { children: ["Recording will automatically stop after ", maxRecordingDuration, " seconds"] })] }), type: "warning", showIcon: true })), status === 'stopped' && mediaBlobUrl && (jsxRuntime.jsx(antd.Alert, { message: "Recording Complete!", description: jsxRuntime.jsxs("div", { children: [jsxRuntime.jsxs("p", { children: ["Your video has been recorded successfully (", formatTime(recordingTime), ")."] }), jsxRuntime.jsx("p", { className: "mt-2", children: "Review the video above. If you're satisfied, click \"Use This Video\" to proceed." }), jsxRuntime.jsx("p", { className: "text-xs text-gray-500 mt-2", children: "Note: In production, this video will be validated by the backend quality gate before acceptance." })] }), type: "success", showIcon: true }))] }));
+};
+
+/**
+ * ProfileEmbedding Component
+ *
+ * Unified component for profile facial embedding capture.
+ * Supports both basic (static images) and advanced (video) modes.
+ *
+ * @example
+ * ```tsx
+ * // Basic usage
+ * <ProfileEmbedding
+ *   onChange={(value) => console.log(value)}
+ *   registrationCameras={cameras}
+ * />
+ *
+ * // Advanced mode only
+ * <ProfileEmbedding
+ *   defaultMode="advanced"
+ *   hideModeSelector
+ *   registrationCameras={cameras}
+ * />
+ *
+ * // Edit mode with existing user
+ * <ProfileEmbedding
+ *   user={existingUser}
+ *   onChange={handleChange}
+ * />
+ * ```
+ */
+const ProfileEmbedding = ({ value, onChange, defaultMode = 'basic', user = null, registrationCameras = [], allowModeSwitch = true, hideModeSelector = false, basicModeProps = {}, advancedModeProps = {}, className = '', modeLabels = {
+    basic: 'Basic Mode (Images)',
+    advanced: 'Advanced Mode (Video)'
+} }) => {
+    // State for mode selection
+    const [mode, setMode] = React.useState(value?.mode || defaultMode);
+    // State for captured data
+    const [basicImages, setBasicImages] = React.useState(value?.basicImages || null);
+    const [advancedVideo, setAdvancedVideo] = React.useState(value?.advancedVideo || null);
+    // Handle mode change
+    const handleModeChange = (newMode) => {
+        if (!allowModeSwitch)
+            return;
+        setMode(newMode);
+        onChange?.({
+            mode: newMode,
+            basicImages: newMode === 'basic' ? basicImages : null,
+            advancedVideo: newMode === 'advanced' ? advancedVideo : null
+        });
+    };
+    // Handle basic mode images change
+    const handleBasicImagesChange = (images) => {
+        setBasicImages(images);
+        onChange?.({
+            mode: 'basic',
+            basicImages: images,
+            advancedVideo: null
+        });
+    };
+    // Handle advanced mode video change
+    const handleAdvancedVideoChange = (video) => {
+        setAdvancedVideo(video);
+        onChange?.({
+            mode: 'advanced',
+            basicImages: null,
+            advancedVideo: video
+        });
+    };
+    return (jsxRuntime.jsxs("div", { className: `safespace-profile-embedding ${className}`, children: [!hideModeSelector && (jsxRuntime.jsx("div", { className: "mb-6", children: jsxRuntime.jsx(antd.Radio.Group, { value: mode, onChange: (e) => handleModeChange(e.target.value), buttonStyle: "solid", size: "large", disabled: !allowModeSwitch, children: jsxRuntime.jsxs(antd.Space, { direction: "horizontal", size: "middle", children: [jsxRuntime.jsx(antd.Radio.Button, { value: "basic", children: jsxRuntime.jsxs(antd.Space, { children: [jsxRuntime.jsx(icons.CameraOutlined, {}), modeLabels.basic] }) }), jsxRuntime.jsx(antd.Radio.Button, { value: "advanced", children: jsxRuntime.jsxs(antd.Space, { children: [jsxRuntime.jsx(icons.VideoCameraOutlined, {}), modeLabels.advanced] }) })] }) }) })), mode === 'basic' && (jsxRuntime.jsx(BasicModeCapture, { value: basicImages || undefined, onChange: handleBasicImagesChange, user: user, ...basicModeProps })), mode === 'advanced' && (jsxRuntime.jsx(AdvancedModeCapture, { onChange: handleAdvancedVideoChange, registrationCameras: registrationCameras, ...advancedModeProps }))] }));
+};
+
 /**
  * Hook for managing tree component state
  *
@@ -1967,11 +2390,14 @@ Object.defineProperty(exports, "Typography", {
   enumerable: true,
   get: function () { return antd.Typography; }
 });
+exports.AdvancedModeCapture = AdvancedModeCapture;
+exports.BasicModeCapture = BasicModeCapture;
 exports.FullscreenModal = FullscreenModal;
 exports.LiveFeedPlayer = LiveFeedPlayer;
 exports.LiveFeedViewer = LiveFeedViewer;
 exports.LiveVideos = LiveVideos;
 exports.MainVideoPlayer = MainVideoPlayer;
+exports.ProfileEmbedding = ProfileEmbedding;
 exports.ProgressBar = ProgressBar;
 exports.SafeSpaceThemeProvider = SafeSpaceThemeProvider;
 exports.StreamInfo = StreamInfo;
