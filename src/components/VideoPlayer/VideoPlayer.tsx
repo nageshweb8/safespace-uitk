@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import Hls from 'hls.js';
 import { VideoPlayerProps, CameraStream } from '../../types/video';
 import { cn } from '../../utils/cn';
@@ -8,6 +8,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   autoPlay = true,
   muted = true,
   controls = false,
+  loop = false,
   className,
   onError,
   onLoadStart,
@@ -18,6 +19,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const loopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -164,64 +166,128 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     // HLS flow (unchanged)
     cleanup();
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native HLS support (Safari)
-      video.src = stream.url;
-      onLoadEnd?.();
-    } else if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 10,
-        liveDurationInfinity: true,
-        backBufferLength: 90,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 600,
-        startLevel: -1,
-        autoStartLoad: true,
-        capLevelToPlayerSize: true,
-        manifestLoadingMaxRetry: 6,
-        manifestLoadingRetryDelay: 1000,
-        levelLoadingMaxRetry: 6,
-        levelLoadingRetryDelay: 1000,
-      });
+    // Helper function to initialize/reinitialize HLS
+    const initializeHls = () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
 
-      hlsRef.current = hls;
-      hls.loadSource(stream.url);
-      hls.attachMedia(video);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS support (Safari)
+        video.src = stream.url;
         onLoadEnd?.();
-      });
+      } else if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          liveSyncDurationCount: 3,
+          liveMaxLatencyDurationCount: 10,
+          liveDurationInfinity: false, // Set to false for VOD/recorded content
+          backBufferLength: 30, // Reduced to avoid excessive caching
+          maxBufferLength: 30,
+          maxMaxBufferLength: 120, // Reduced to prevent memory issues
+          startLevel: -1,
+          autoStartLoad: true,
+          capLevelToPlayerSize: true,
+          // Retry configuration to avoid flooding requests
+          manifestLoadingMaxRetry: 4,
+          manifestLoadingRetryDelay: 2000,
+          manifestLoadingMaxRetryTimeout: 30000,
+          levelLoadingMaxRetry: 4,
+          levelLoadingRetryDelay: 2000,
+          levelLoadingMaxRetryTimeout: 30000,
+          fragLoadingMaxRetry: 4,
+          fragLoadingRetryDelay: 2000,
+          fragLoadingMaxRetryTimeout: 30000,
+          // XHR setup to add proper headers and avoid ORB blocking
+          xhrSetup: (xhr, url) => {
+            // Add cache-busting for looped content to avoid ORB issues
+            xhr.withCredentials = false;
+            // Set proper Accept header for media segments
+            if (url.includes('.ts') || url.includes('.m4s')) {
+              xhr.setRequestHeader('Accept', 'video/*,application/octet-stream,*/*');
+            }
+          },
+        });
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        console.error('HLS Error:', data);
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              console.warn('HLS Network Error - attempting recovery:', data.details);
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              console.warn('HLS Media Error - attempting recovery:', data.details);
-              hls.recoverMediaError();
-              break;
-            default:
-              console.error('HLS Fatal Error:', data.type, data.details);
-              onError?.(
-                new Error(`Fatal Error: ${data.type} - ${data.details}`)
-              );
-              break;
+        hlsRef.current = hls;
+        hls.loadSource(stream.url);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          onLoadEnd?.();
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          console.error('HLS Error:', data);
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                // Check if it's an ORB-related error
+                if (data.details === 'fragLoadError' || data.details === 'levelLoadError') {
+                  console.warn('HLS Network Error (possible ORB) - reinitializing:', data.details);
+                  // Reinitialize HLS after a delay to avoid rapid retries
+                  if (loopTimeoutRef.current) {
+                    clearTimeout(loopTimeoutRef.current);
+                  }
+                  loopTimeoutRef.current = setTimeout(() => {
+                    initializeHls();
+                  }, 1000);
+                } else {
+                  console.warn('HLS Network Error - attempting recovery:', data.details);
+                  hls.startLoad();
+                }
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.warn('HLS Media Error - attempting recovery:', data.details);
+                hls.recoverMediaError();
+                break;
+              default:
+                console.error('HLS Fatal Error:', data.type, data.details);
+                onError?.(
+                  new Error(`Fatal Error: ${data.type} - ${data.details}`)
+                );
+                break;
+            }
           }
-        }
-      });
-    } else {
-      onError?.(new Error('HLS not supported in this browser'));
-    }
+        });
+      } else {
+        onError?.(new Error('HLS not supported in this browser'));
+      }
+    };
 
-    return cleanup;
-  }, [stream.url, stream, onError, onLoadStart, onLoadEnd]);
+    // Initialize HLS
+    initializeHls();
+
+    // Handle loop for HLS content - reinitialize instead of native loop to avoid ORB
+    const handleEnded = () => {
+      if (loop && hlsRef.current) {
+        console.log('Video ended, reinitializing HLS for loop');
+        // Small delay before reinitializing to avoid request flooding
+        if (loopTimeoutRef.current) {
+          clearTimeout(loopTimeoutRef.current);
+        }
+        loopTimeoutRef.current = setTimeout(() => {
+          initializeHls();
+          if (videoRef.current) {
+            videoRef.current.play().catch(() => {/* ignore */});
+          }
+        }, 100);
+      }
+    };
+
+    video.addEventListener('ended', handleEnded);
+
+    return () => {
+      video.removeEventListener('ended', handleEnded);
+      if (loopTimeoutRef.current) {
+        clearTimeout(loopTimeoutRef.current);
+        loopTimeoutRef.current = null;
+      }
+      cleanup();
+    };
+  }, [stream.url, stream, onError, onLoadStart, onLoadEnd, loop]);
 
   useEffect(() => {
     exposeVideoRef?.(videoRef.current);

@@ -41,6 +41,7 @@ export interface VideoPlayerProps {
   autoPlay?: boolean;
   muted?: boolean;
   controls?: boolean;
+  loop?: boolean;
   className?: string;
   onError?: (error: Error) => void;
   onLoadStart?: () => void;

@@ -111,9 +111,10 @@ function cn(...inputs) {
     return twMerge(clsx(inputs));
 }
 
-const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, className, onError, onLoadStart, onLoadEnd, showOverlay = false, objectFit = 'cover', exposeVideoRef, }) => {
+const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, loop = false, className, onError, onLoadStart, onLoadEnd, showOverlay = false, objectFit = 'cover', exposeVideoRef, }) => {
     const videoRef = useRef(null);
     const hlsRef = useRef(null);
+    const loopTimeoutRef = useRef(null);
     useEffect(() => {
         const video = videoRef.current;
         if (!video || !stream.url)
@@ -251,60 +252,121 @@ const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, 
         }
         // HLS flow (unchanged)
         cleanup();
-        if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            // Native HLS support (Safari)
-            video.src = stream.url;
-            onLoadEnd?.();
-        }
-        else if (Hls.isSupported()) {
-            const hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: true,
-                liveSyncDurationCount: 3,
-                liveMaxLatencyDurationCount: 10,
-                liveDurationInfinity: true,
-                backBufferLength: 90,
-                maxBufferLength: 30,
-                maxMaxBufferLength: 600,
-                startLevel: -1,
-                autoStartLoad: true,
-                capLevelToPlayerSize: true,
-                manifestLoadingMaxRetry: 6,
-                manifestLoadingRetryDelay: 1000,
-                levelLoadingMaxRetry: 6,
-                levelLoadingRetryDelay: 1000,
-            });
-            hlsRef.current = hls;
-            hls.loadSource(stream.url);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        // Helper function to initialize/reinitialize HLS
+        const initializeHls = () => {
+            if (hlsRef.current) {
+                hlsRef.current.destroy();
+                hlsRef.current = null;
+            }
+            if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS support (Safari)
+                video.src = stream.url;
                 onLoadEnd?.();
-            });
-            hls.on(Hls.Events.ERROR, (event, data) => {
-                console.error('HLS Error:', data);
-                if (data.fatal) {
-                    switch (data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            console.warn('HLS Network Error - attempting recovery:', data.details);
-                            hls.startLoad();
-                            break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            console.warn('HLS Media Error - attempting recovery:', data.details);
-                            hls.recoverMediaError();
-                            break;
-                        default:
-                            console.error('HLS Fatal Error:', data.type, data.details);
-                            onError?.(new Error(`Fatal Error: ${data.type} - ${data.details}`));
-                            break;
+            }
+            else if (Hls.isSupported()) {
+                const hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    liveSyncDurationCount: 3,
+                    liveMaxLatencyDurationCount: 10,
+                    liveDurationInfinity: false, // Set to false for VOD/recorded content
+                    backBufferLength: 30, // Reduced to avoid excessive caching
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 120, // Reduced to prevent memory issues
+                    startLevel: -1,
+                    autoStartLoad: true,
+                    capLevelToPlayerSize: true,
+                    // Retry configuration to avoid flooding requests
+                    manifestLoadingMaxRetry: 4,
+                    manifestLoadingRetryDelay: 2000,
+                    manifestLoadingMaxRetryTimeout: 30000,
+                    levelLoadingMaxRetry: 4,
+                    levelLoadingRetryDelay: 2000,
+                    levelLoadingMaxRetryTimeout: 30000,
+                    fragLoadingMaxRetry: 4,
+                    fragLoadingRetryDelay: 2000,
+                    fragLoadingMaxRetryTimeout: 30000,
+                    // XHR setup to add proper headers and avoid ORB blocking
+                    xhrSetup: (xhr, url) => {
+                        // Add cache-busting for looped content to avoid ORB issues
+                        xhr.withCredentials = false;
+                        // Set proper Accept header for media segments
+                        if (url.includes('.ts') || url.includes('.m4s')) {
+                            xhr.setRequestHeader('Accept', 'video/*,application/octet-stream,*/*');
+                        }
+                    },
+                });
+                hlsRef.current = hls;
+                hls.loadSource(stream.url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    onLoadEnd?.();
+                });
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    console.error('HLS Error:', data);
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                // Check if it's an ORB-related error
+                                if (data.details === 'fragLoadError' || data.details === 'levelLoadError') {
+                                    console.warn('HLS Network Error (possible ORB) - reinitializing:', data.details);
+                                    // Reinitialize HLS after a delay to avoid rapid retries
+                                    if (loopTimeoutRef.current) {
+                                        clearTimeout(loopTimeoutRef.current);
+                                    }
+                                    loopTimeoutRef.current = setTimeout(() => {
+                                        initializeHls();
+                                    }, 1000);
+                                }
+                                else {
+                                    console.warn('HLS Network Error - attempting recovery:', data.details);
+                                    hls.startLoad();
+                                }
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.warn('HLS Media Error - attempting recovery:', data.details);
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                console.error('HLS Fatal Error:', data.type, data.details);
+                                onError?.(new Error(`Fatal Error: ${data.type} - ${data.details}`));
+                                break;
+                        }
                     }
+                });
+            }
+            else {
+                onError?.(new Error('HLS not supported in this browser'));
+            }
+        };
+        // Initialize HLS
+        initializeHls();
+        // Handle loop for HLS content - reinitialize instead of native loop to avoid ORB
+        const handleEnded = () => {
+            if (loop && hlsRef.current) {
+                console.log('Video ended, reinitializing HLS for loop');
+                // Small delay before reinitializing to avoid request flooding
+                if (loopTimeoutRef.current) {
+                    clearTimeout(loopTimeoutRef.current);
                 }
-            });
-        }
-        else {
-            onError?.(new Error('HLS not supported in this browser'));
-        }
-        return cleanup;
-    }, [stream.url, stream, onError, onLoadStart, onLoadEnd]);
+                loopTimeoutRef.current = setTimeout(() => {
+                    initializeHls();
+                    if (videoRef.current) {
+                        videoRef.current.play().catch(() => { });
+                    }
+                }, 100);
+            }
+        };
+        video.addEventListener('ended', handleEnded);
+        return () => {
+            video.removeEventListener('ended', handleEnded);
+            if (loopTimeoutRef.current) {
+                clearTimeout(loopTimeoutRef.current);
+                loopTimeoutRef.current = null;
+            }
+            cleanup();
+        };
+    }, [stream.url, stream, onError, onLoadStart, onLoadEnd, loop]);
     useEffect(() => {
         exposeVideoRef?.(videoRef.current);
         return () => {
@@ -378,6 +440,15 @@ const MainVideoPlayer = ({ stream, isPlaying, isMuted, error, showControls, stre
 };
 
 const { Text: Text$2 } = Typography;
+const ThumbnailItem = React.memo(({ stream, index, onStreamSelect, onFullscreen, showControls = false, }) => {
+    return (jsxs("div", { className: "relative overflow-hidden rounded-md bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all flex-1 min-h-0", onClick: () => onStreamSelect(index), children: [jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsx(StreamInfo, { stream: stream, showLiveIndicator: true, className: "text-[10px] px-1 py-0.5" }), jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen || (() => { }), showControls: showControls, size: "small" }), jsx(ProgressBar, { progress: 30 + index * 10, size: "small", color: "white", className: "px-1 pb-0.5" })] }));
+}, (prevProps, nextProps) => {
+    // Only re-render if the stream itself changes (by id or url)
+    return (prevProps.stream.id === nextProps.stream.id &&
+        prevProps.stream.url === nextProps.stream.url &&
+        prevProps.index === nextProps.index);
+});
+ThumbnailItem.displayName = 'ThumbnailItem';
 const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscreen, layout, maxVisible = 3, }) => {
     const streamCount = streams.length;
     if (streamCount === 2 && layout === 'horizontal') {
@@ -388,11 +459,12 @@ const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscree
     }
     if (streamCount >= 3 && layout === 'vertical') {
         // Thumbnail grid layout for 3+ videos (25% width area)
+        // Memoize the thumbnail streams to prevent recalculating on every render
         const thumbnailStreams = streams
             .map((stream, index) => ({ stream, index }))
             .filter(({ index }) => index !== activeStreamIndex)
             .slice(0, maxVisible);
-        return (jsx("div", { className: "w-full h-full", children: jsxs("div", { className: "flex flex-col gap-2 h-full", children: [thumbnailStreams.map(({ stream, index }) => (jsxs("div", { className: "relative overflow-hidden rounded-md bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all flex-1 min-h-0", onClick: () => onStreamSelect(index), children: [jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, showOverlay: true, className: "hover:scale-105 transition-transform" }), jsx(StreamInfo, { stream: stream, showLiveIndicator: true, className: "text-[10px] px-1 py-0.5" }), jsx(VideoControls, { isPlaying: false, isMuted: true, onPlayPause: () => { }, onMuteUnmute: () => { }, onFullscreen: onFullscreen, showControls: false, size: "small" }), jsx(ProgressBar, { progress: 30 + index * 10, size: "small", color: "white", className: "px-1 pb-0.5" })] }, stream.id))), streams.length > maxVisible + 1 && (jsx("div", { className: "text-center py-1", children: jsxs(Text$2, { className: "text-xs text-gray-500", children: ["+", streams.length - maxVisible - 1, " more"] }) }))] }) }));
+        return (jsx("div", { className: "w-full h-full", children: jsxs("div", { className: "flex flex-col gap-2 h-full", children: [thumbnailStreams.map(({ stream, index }) => (jsx(ThumbnailItem, { stream: stream, index: index, onStreamSelect: onStreamSelect, onFullscreen: onFullscreen, showControls: false }, stream.id))), streams.length > maxVisible + 1 && (jsx("div", { className: "text-center py-1", children: jsxs(Text$2, { className: "text-xs text-gray-500", children: ["+", streams.length - maxVisible - 1, " more"] }) }))] }) }));
     }
     return null;
 };
