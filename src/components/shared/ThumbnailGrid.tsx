@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Typography } from 'antd';
 import { ThumbnailGridProps, CameraStream } from '../../types/video';
 import { VideoPlayer } from '../VideoPlayer';

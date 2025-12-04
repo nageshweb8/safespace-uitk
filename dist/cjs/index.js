@@ -112,7 +112,9 @@ function cn(...inputs) {
     return tailwindMerge.twMerge(clsx.clsx(inputs));
 }
 
-const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, loop = false, className, onError, onLoadStart, onLoadEnd, showOverlay = false, objectFit = 'cover', exposeVideoRef, }) => {
+const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, loop = false, className, onError, onLoadStart, onLoadEnd, showOverlay = false, 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+objectFit = 'cover', exposeVideoRef, }) => {
     const videoRef = React.useRef(null);
     const hlsRef = React.useRef(null);
     const loopTimeoutRef = React.useRef(null);
@@ -265,36 +267,44 @@ const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, 
                 onLoadEnd?.();
             }
             else if (Hls.isSupported()) {
+                // Generate a unique session ID for this HLS instance
+                const sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
                 const hls = new Hls({
                     enableWorker: true,
-                    lowLatencyMode: true,
+                    lowLatencyMode: false, // Disable for VOD content to reduce aggressive fetching
                     liveSyncDurationCount: 3,
                     liveMaxLatencyDurationCount: 10,
                     liveDurationInfinity: false, // Set to false for VOD/recorded content
-                    backBufferLength: 30, // Reduced to avoid excessive caching
+                    backBufferLength: 0, // Don't keep back buffer to avoid re-requesting old segments
                     maxBufferLength: 30,
-                    maxMaxBufferLength: 120, // Reduced to prevent memory issues
+                    maxMaxBufferLength: 60, // Further reduced to prevent memory/cache issues
                     startLevel: -1,
                     autoStartLoad: true,
                     capLevelToPlayerSize: true,
-                    // Retry configuration to avoid flooding requests
-                    manifestLoadingMaxRetry: 4,
-                    manifestLoadingRetryDelay: 2000,
+                    // Retry configuration - fewer retries with longer delays
+                    manifestLoadingMaxRetry: 2,
+                    manifestLoadingRetryDelay: 3000,
                     manifestLoadingMaxRetryTimeout: 30000,
-                    levelLoadingMaxRetry: 4,
-                    levelLoadingRetryDelay: 2000,
+                    levelLoadingMaxRetry: 2,
+                    levelLoadingRetryDelay: 3000,
                     levelLoadingMaxRetryTimeout: 30000,
-                    fragLoadingMaxRetry: 4,
-                    fragLoadingRetryDelay: 2000,
+                    fragLoadingMaxRetry: 1, // Minimal retries for fragments - if it fails, likely ORB
+                    fragLoadingRetryDelay: 5000, // Longer delay before retry
                     fragLoadingMaxRetryTimeout: 30000,
-                    // XHR setup to add proper headers and avoid ORB blocking
+                    // XHR setup to bypass ORB by adding cache-busting and proper headers
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     xhrSetup: (xhr, url) => {
-                        // Add cache-busting for looped content to avoid ORB issues
                         xhr.withCredentials = false;
-                        // Set proper Accept header for media segments
-                        if (url.includes('.ts') || url.includes('.m4s')) {
-                            xhr.setRequestHeader('Accept', 'video/*,application/octet-stream,*/*');
-                        }
+                        // Override the open method to add cache-busting parameter
+                        const originalOpen = xhr.open.bind(xhr);
+                        xhr.open = function (method, modUrl, async, user, password) {
+                            // Add cache-busting to .ts and .m4s segment requests
+                            if (modUrl.includes('.ts') || modUrl.includes('.m4s') || modUrl.includes('.m3u8')) {
+                                const separator = modUrl.includes('?') ? '&' : '?';
+                                modUrl = `${modUrl}${separator}_hls_cb=${sessionId}_${Date.now()}`;
+                            }
+                            return originalOpen(method, modUrl, async ?? true, user, password);
+                        };
                     },
                 });
                 hlsRef.current = hls;
