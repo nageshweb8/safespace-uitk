@@ -109,7 +109,7 @@ const LiveVideoTileInner: React.FC<LiveVideoTileProps> = ({
         <VideoPlayer
           key={stream?.id ?? index}
           stream={stream!}
-          autoPlay={isPlaying}
+          autoPlay={true}
           muted={isMuted}
           controls={false}
           objectFit="cover"

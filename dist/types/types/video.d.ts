@@ -61,6 +61,38 @@ export interface LiveFeedPlayerProps {
     enableFullscreen?: boolean;
     enableKeyboardControls?: boolean;
 }
+export interface WHEPConfig {
+    /** Base URL for WHEP endpoints (e.g., 'http://192.168.101.87:8889') */
+    baseUrl: string;
+    /** Optional authentication credentials in 'username:password' format */
+    authCredentials?: string;
+    /** Delay between reconnection attempts in milliseconds (default: 5000) */
+    reconnectDelay?: number;
+    /** Maximum number of reconnection attempts (default: 3) */
+    maxReconnectAttempts?: number;
+    /** Interval for stream health checks in milliseconds (default: 5000) */
+    healthCheckInterval?: number;
+    /** Timeout for detecting stalled streams in milliseconds (default: 12000) */
+    streamStallTimeout?: number;
+}
+export interface LiveFeedWhepProps {
+    streams: CameraStream[];
+    className?: string;
+    autoPlay?: boolean;
+    muted?: boolean;
+    controls?: boolean;
+    showThumbnails?: boolean;
+    onStreamChange?: (stream: CameraStream) => void;
+    onError?: (error: Error, stream: CameraStream) => void;
+    theme?: 'light' | 'dark';
+    title?: string;
+    subtitle?: string;
+    maxThumbnails?: number;
+    enableFullscreen?: boolean;
+    enableKeyboardControls?: boolean;
+    /** WHEP configuration - required for WHEP streaming */
+    whepConfig: WHEPConfig;
+}
 export interface VideoControlsProps {
     isPlaying: boolean;
     isMuted: boolean;

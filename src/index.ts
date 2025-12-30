@@ -15,7 +15,9 @@ export type {
   ThumbnailGridProps,
   NormalizedPoint,
   Polygon,
-  StreamPolygon
+  StreamPolygon,
+  WHEPConfig,
+  LiveFeedWhepProps
 } from './types/video';
 export type { SafeSpaceTheme } from './types/theme';
 

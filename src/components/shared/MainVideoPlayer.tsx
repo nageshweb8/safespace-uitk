@@ -65,7 +65,7 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
           <VideoPlayer
             key={`${stream.id}-${Date.now()}`}
             stream={stream}
-            autoPlay={isPlaying}
+            autoPlay={true}
             muted={isMuted}
             controls={false}
             onError={onError}
