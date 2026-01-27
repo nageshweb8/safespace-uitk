@@ -16,6 +16,7 @@ export type {
   NormalizedPoint,
   Polygon,
   StreamPolygon,
+  CalibrationData,
   WHEPConfig,
   LiveFeedWhepProps,
   WHEPCameraStream,
