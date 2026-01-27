@@ -1,5 +1,5 @@
 import React from 'react';
-import { CameraStream, NormalizedPoint, StreamPolygon } from '../types/video';
+import { CameraStream, NormalizedPoint, StreamPolygon, CalibrationData } from '../types/video';
 export interface LiveFeedViewerProps {
     stream: CameraStream;
     className?: string;
@@ -30,7 +30,12 @@ export interface LiveFeedViewerProps {
         reset?: boolean;
         fullscreen?: boolean;
         save?: boolean;
+        calibration?: boolean;
     };
+    initialCalibrationPoints?: NormalizedPoint[];
+    onCalibrationPointsChange?: (data: CalibrationData | null) => void;
+    onSaveCalibrationPoints?: (formattedString: string, data: CalibrationData) => void;
+    onCalibrationReset?: () => void;
 }
 export declare const LiveFeedViewer: React.FC<LiveFeedViewerProps>;
 export default LiveFeedViewer;

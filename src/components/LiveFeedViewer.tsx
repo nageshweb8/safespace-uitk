@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Card, Switch, Button, Tooltip, Typography, Modal } from 'antd';
-import { ArrowsAltOutlined, ShrinkOutlined, ReloadOutlined } from '@ant-design/icons';
-import { CameraStream, NormalizedPoint, StreamPolygon, Polygon } from '../types/video';
+import { ArrowsAltOutlined, ShrinkOutlined, ReloadOutlined, AimOutlined, UndoOutlined } from '@ant-design/icons';
+import { CameraStream, NormalizedPoint, StreamPolygon, Polygon, CalibrationData } from '../types/video';
 import { VideoPlayer } from './VideoPlayer';
 import { cn } from '../utils/cn';
 
@@ -42,7 +42,17 @@ export interface LiveFeedViewerProps {
     reset?: boolean;
     fullscreen?: boolean;
     save?: boolean;
+    calibration?: boolean; // NEW: Calibration mode toggle (default: false - not shown)
   };
+  // ===== NEW: Calibration Points Feature (for cameras without AI) =====
+  // Initial calibration points (for editing existing calibration)
+  initialCalibrationPoints?: NormalizedPoint[];
+  // Called when calibration points change (each point added/removed)
+  onCalibrationPointsChange?: (data: CalibrationData | null) => void;
+  // Called when calibration is complete (4 points) and user clicks save
+  onSaveCalibrationPoints?: (formattedString: string, data: CalibrationData) => void;
+  // Called when calibration points are reset
+  onCalibrationReset?: () => void;
 }
 
 // Simple distance helper
@@ -70,6 +80,11 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   onSelectionChange,
   onReset,
   showControls,
+  // NEW: Calibration props
+  initialCalibrationPoints,
+  onCalibrationPointsChange,
+  onSaveCalibrationPoints,
+  onCalibrationReset,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -85,6 +100,43 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   // Track anomalies by polygon index
   const [polygonAnomalies, setPolygonAnomalies] = useState<Record<number, number[]>>({});
+
+  // ===== NEW: Calibration state =====
+  const [calibrationEnabled, setCalibrationEnabled] = useState<boolean>(false);
+  const [calibrationPoints, setCalibrationPoints] = useState<NormalizedPoint[]>(
+    initialCalibrationPoints ?? []
+  );
+
+  // Initialize calibration points from props
+  useEffect(() => {
+    if (initialCalibrationPoints && initialCalibrationPoints.length > 0) {
+      setCalibrationPoints([...initialCalibrationPoints]);
+    }
+  }, [initialCalibrationPoints]);
+
+  // Helper to format calibration points for API
+  const formatCalibrationPointsForAPI = useCallback((points: NormalizedPoint[]): string => {
+    if (points.length === 0) return '';
+    const pixelPoints = points.map(p => ({
+      x: Math.round(p.x * size.width),
+      y: Math.round(p.y * size.height)
+    }));
+    return '[' + pixelPoints.map(p => `(${p.x},${p.y})`).join(', ') + ']';
+  }, [size.width, size.height]);
+
+  // Build calibration data object
+  const buildCalibrationData = useCallback((points: NormalizedPoint[]): CalibrationData => {
+    const pixelPoints = points.map(p => ({
+      x: Math.round(p.x * size.width),
+      y: Math.round(p.y * size.height)
+    }));
+    return {
+      points,
+      pixelPoints,
+      formattedString: formatCalibrationPointsForAPI(points),
+      timestamp: Date.now()
+    };
+  }, [size.width, size.height, formatCalibrationPointsForAPI]);
 
   // Emit selection change to parent with details
   const emitSelectedChange = useCallback((idx: number | null) => {
@@ -306,7 +358,39 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
       ctx.fillStyle = 'rgba(255,255,0,0.9)';
       ctx.fill();
     }
-  }, [polygons, currentPoints, size, selectedIndex, stream?.polygons, anomalyCatalog]);
+
+    // ===== NEW: Draw calibration points (dots only, no lines) =====
+    if (calibrationPoints.length > 0) {
+      const calibrationColor = 'rgba(255, 165, 0, 1)'; // Orange for visibility
+      const calibrationBgColor = 'rgba(255, 165, 0, 0.3)';
+      
+      calibrationPoints.forEach((point, idx) => {
+        const p = px(point);
+        
+        // Draw outer glow/background
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+        ctx.fillStyle = calibrationBgColor;
+        ctx.fill();
+        
+        // Draw main dot
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = calibrationColor;
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Draw point number label
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(idx + 1), p.x, p.y);
+      });
+    }
+  }, [polygons, currentPoints, size, selectedIndex, stream?.polygons, anomalyCatalog, calibrationPoints]);
 
   // Notify changes in both legacy and detailed shapes
   useEffect(() => {
@@ -356,8 +440,26 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
       x: size.width ? pointPx.x / size.width : 0,
       y: size.height ? pointPx.y / size.height : 0,
     };
+
+    // ===== NEW: Calibration mode - handle 4-point calibration =====
+    if (calibrationEnabled) {
+      if (calibrationPoints.length >= 4) return; // Already complete
+      
+      const newPoints = [...calibrationPoints, point];
+      setCalibrationPoints(newPoints);
+      
+      // Emit change callback
+      const calibData = buildCalibrationData(newPoints);
+      onCalibrationPointsChange?.(calibData);
+      
+      // Auto-disable after 4 points
+      if (newPoints.length === 4) {
+        setCalibrationEnabled(false);
+      }
+      return;
+    }
     
-    // Selection mode when drawing is disabled
+    // Selection mode when drawing is disabled (existing behavior unchanged)
     if (!drawingEnabled) {
       let found: number | null = null;
       for (let i = polygons.length - 1; i >= 0; i--) {
@@ -372,7 +474,7 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
       return;
     }
 
-    // Drawing mode - only allow when drawing is enabled
+    // Drawing mode - only allow when drawing is enabled (existing behavior unchanged)
     // close when near first point
     if (currentPoints.length > 2) {
       const firstPx = {
@@ -445,12 +547,56 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
   // Expand controls handled via Modal
 
   const canDraw = enabled && drawingEnabled;
+  const canCalibrate = enabled && calibrationEnabled;
   const controlsVisible = {
     draw: showControls?.draw ?? true,
     viewer: showControls?.viewer ?? true,
     reset: showControls?.reset ?? true,
-  fullscreen: showControls?.fullscreen ?? true, // re-used as Expand visibility
+    fullscreen: showControls?.fullscreen ?? true, // re-used as Expand visibility
     save: showControls?.save ?? true,
+    calibration: showControls?.calibration ?? false, // NEW: Default to false (not shown)
+  };
+
+  // ===== NEW: Calibration mode toggle handler =====
+  const handleCalibrationToggle = () => {
+    const newEnabled = !calibrationEnabled;
+    setCalibrationEnabled(newEnabled);
+    // When enabling calibration, disable polygon drawing
+    if (newEnabled) {
+      setDrawingEnabled(false);
+    }
+  };
+
+  // ===== NEW: Undo last calibration point =====
+  const handleCalibrationUndo = () => {
+    if (calibrationPoints.length === 0) return;
+    const newPoints = calibrationPoints.slice(0, -1);
+    setCalibrationPoints(newPoints);
+    // Re-enable calibration mode if it was auto-disabled
+    if (calibrationPoints.length === 4) {
+      setCalibrationEnabled(true);
+    }
+    // Emit change
+    if (newPoints.length > 0) {
+      onCalibrationPointsChange?.(buildCalibrationData(newPoints));
+    } else {
+      onCalibrationPointsChange?.(null);
+    }
+  };
+
+  // ===== NEW: Reset all calibration points =====
+  const handleCalibrationReset = () => {
+    setCalibrationPoints([]);
+    setCalibrationEnabled(false);
+    onCalibrationPointsChange?.(null);
+    onCalibrationReset?.();
+  };
+
+  // ===== NEW: Save calibration points =====
+  const handleSaveCalibration = () => {
+    if (calibrationPoints.length !== 4 || !onSaveCalibrationPoints) return;
+    const calibData = buildCalibrationData(calibrationPoints);
+    onSaveCalibrationPoints(calibData.formattedString, calibData);
   };
 
   // Save only the selected polygon
@@ -523,11 +669,69 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
           {controlsVisible.draw && (
             <div className="flex items-center gap-2">
               <Text className="text-xs">Draw</Text>
-              <Switch checked={drawingEnabled} onChange={setDrawingEnabled} />
+              <Switch 
+                checked={drawingEnabled} 
+                onChange={(checked) => {
+                  setDrawingEnabled(checked);
+                  // Disable calibration when enabling draw
+                  if (checked) setCalibrationEnabled(false);
+                }}
+                disabled={calibrationEnabled}
+              />
             </div>
           )}
           {controlsVisible.reset && (
             <Button size="small" onClick={handleReset} disabled={!enabled} icon={<ReloadOutlined />}>Reset</Button>
+          )}
+          {/* NEW: Calibration controls - placed after Reset */}
+          {controlsVisible.calibration && (
+            <>
+              <Tooltip title={calibrationEnabled ? 'Calibration mode active (click 4 points)' : 'Enable 4-point calibration mode'}>
+                <Button 
+                  size="small" 
+                  type={calibrationEnabled ? 'primary' : 'default'}
+                  onClick={handleCalibrationToggle}
+                  disabled={!enabled || calibrationPoints.length === 4}
+                  icon={<AimOutlined />}
+                >
+                  {calibrationPoints.length > 0 ? `${calibrationPoints.length}/4` : 'Calibrate'}
+                </Button>
+              </Tooltip>
+              {calibrationPoints.length > 0 && (
+                <Tooltip title="Undo last calibration point">
+                  <Button 
+                    size="small" 
+                    onClick={handleCalibrationUndo}
+                    disabled={!enabled}
+                    icon={<UndoOutlined />}
+                  />
+                </Tooltip>
+              )}
+              {calibrationPoints.length > 0 && (
+                <Tooltip title="Reset all calibration points">
+                  <Button 
+                    size="small" 
+                    danger
+                    onClick={handleCalibrationReset}
+                    disabled={!enabled}
+                  >
+                    Clear
+                  </Button>
+                </Tooltip>
+              )}
+              {calibrationPoints.length === 4 && onSaveCalibrationPoints && (
+                <Tooltip title="Save calibration points">
+                  <Button 
+                    size="small" 
+                    type="primary"
+                    onClick={handleSaveCalibration}
+                    disabled={!enabled}
+                  >
+                    Save Calibration
+                  </Button>
+                </Tooltip>
+              )}
+            </>
           )}
           {controlsVisible.save && (
             <Tooltip title={selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon'}>
@@ -563,7 +767,10 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
               <canvas
                 ref={canvasRef}
                 className="absolute inset-0 z-10"
-                style={{ pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }}
+                style={{ 
+                  pointerEvents: enabled ? 'auto' : 'none', 
+                  cursor: canCalibrate ? 'crosshair' : canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' 
+                }}
                 onClick={handleCanvasClick}
               />
             </>
@@ -602,11 +809,68 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
             {controlsVisible.draw && (
               <div className="flex items-center gap-2">
                 <Text className="text-xs">Draw</Text>
-                <Switch checked={drawingEnabled} onChange={setDrawingEnabled} />
+                <Switch 
+                  checked={drawingEnabled} 
+                  onChange={(checked) => {
+                    setDrawingEnabled(checked);
+                    if (checked) setCalibrationEnabled(false);
+                  }}
+                  disabled={calibrationEnabled}
+                />
               </div>
             )}
             {controlsVisible.reset && (
               <Button size="small" onClick={handleReset} disabled={!enabled} icon={<ReloadOutlined />}>Reset</Button>
+            )}
+            {/* NEW: Calibration controls in Modal */}
+            {controlsVisible.calibration && (
+              <>
+                <Tooltip title={calibrationEnabled ? 'Calibration mode active (click 4 points)' : 'Enable 4-point calibration mode'}>
+                  <Button 
+                    size="small" 
+                    type={calibrationEnabled ? 'primary' : 'default'}
+                    onClick={handleCalibrationToggle}
+                    disabled={!enabled || calibrationPoints.length === 4}
+                    icon={<AimOutlined />}
+                  >
+                    {calibrationPoints.length > 0 ? `${calibrationPoints.length}/4` : 'Calibrate'}
+                  </Button>
+                </Tooltip>
+                {calibrationPoints.length > 0 && (
+                  <Tooltip title="Undo last calibration point">
+                    <Button 
+                      size="small" 
+                      onClick={handleCalibrationUndo}
+                      disabled={!enabled}
+                      icon={<UndoOutlined />}
+                    />
+                  </Tooltip>
+                )}
+                {calibrationPoints.length > 0 && (
+                  <Tooltip title="Reset all calibration points">
+                    <Button 
+                      size="small" 
+                      danger
+                      onClick={handleCalibrationReset}
+                      disabled={!enabled}
+                    >
+                      Clear
+                    </Button>
+                  </Tooltip>
+                )}
+                {calibrationPoints.length === 4 && onSaveCalibrationPoints && (
+                  <Tooltip title="Save calibration points">
+                    <Button 
+                      size="small" 
+                      type="primary"
+                      onClick={handleSaveCalibration}
+                      disabled={!enabled}
+                    >
+                      Save Calibration
+                    </Button>
+                  </Tooltip>
+                )}
+              </>
             )}
             {controlsVisible.save && (
               <Tooltip title={selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon'}>
@@ -639,7 +903,10 @@ export const LiveFeedViewer: React.FC<LiveFeedViewerProps> = ({
               <canvas
                 ref={canvasRef}
                 className="absolute inset-0 z-10"
-                style={{ pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }}
+                style={{ 
+                  pointerEvents: enabled ? 'auto' : 'none', 
+                  cursor: canCalibrate ? 'crosshair' : canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' 
+                }}
                 onClick={handleCanvasClick}
               />
             </>

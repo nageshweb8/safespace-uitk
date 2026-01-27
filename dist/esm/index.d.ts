@@ -1,7 +1,7 @@
 export * from './components';
 export * from './hooks';
 export { useSafeSpaceTheme } from './components/ThemeProvider';
-export type { CameraStream, VideoPlayerProps, StreamLayoutConfig, VideoControlsProps, StreamInfoProps, ThumbnailGridProps, NormalizedPoint, Polygon, StreamPolygon, WHEPConfig, LiveFeedWhepProps, WHEPCameraStream, GridLayoutPattern, LiveVideosWhepProps } from './types/video';
+export type { CameraStream, VideoPlayerProps, StreamLayoutConfig, VideoControlsProps, StreamInfoProps, ThumbnailGridProps, NormalizedPoint, Polygon, StreamPolygon, CalibrationData, WHEPConfig, LiveFeedWhepProps, WHEPCameraStream, GridLayoutPattern, LiveVideosWhepProps } from './types/video';
 export type { SafeSpaceTheme } from './types/theme';
 export * from './utils/cn';
 export declare const version = "0.1.4";

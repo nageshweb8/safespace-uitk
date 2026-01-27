@@ -557,7 +557,9 @@ function distance(a, b) {
 }
 const LiveFeedViewer = ({ stream, className, title = 'Live Feed Viewer', subtitle = 'Draw polygons (lines only) on live video', defaultEnabled = true, defaultDrawEnabled = false, enableMultiplePolygons = true, initialPolygons, onPolygonsChange, onPolygonDetails, onSaveSelectedPolygon, anomalyCatalog, 
 // onAnomalyChange,
-selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
+selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, 
+// NEW: Calibration props
+initialCalibrationPoints, onCalibrationPointsChange, onSaveCalibrationPoints, onCalibrationReset, }) => {
     const containerRef = React.useRef(null);
     const canvasRef = React.useRef(null);
     const [enabled, setEnabled] = React.useState(defaultEnabled);
@@ -571,6 +573,38 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
     const [selectedIndex, setSelectedIndex] = React.useState(null);
     // Track anomalies by polygon index
     const [polygonAnomalies, setPolygonAnomalies] = React.useState({});
+    // ===== NEW: Calibration state =====
+    const [calibrationEnabled, setCalibrationEnabled] = React.useState(false);
+    const [calibrationPoints, setCalibrationPoints] = React.useState(initialCalibrationPoints ?? []);
+    // Initialize calibration points from props
+    React.useEffect(() => {
+        if (initialCalibrationPoints && initialCalibrationPoints.length > 0) {
+            setCalibrationPoints([...initialCalibrationPoints]);
+        }
+    }, [initialCalibrationPoints]);
+    // Helper to format calibration points for API
+    const formatCalibrationPointsForAPI = React.useCallback((points) => {
+        if (points.length === 0)
+            return '';
+        const pixelPoints = points.map(p => ({
+            x: Math.round(p.x * size.width),
+            y: Math.round(p.y * size.height)
+        }));
+        return '[' + pixelPoints.map(p => `(${p.x},${p.y})`).join(', ') + ']';
+    }, [size.width, size.height]);
+    // Build calibration data object
+    const buildCalibrationData = React.useCallback((points) => {
+        const pixelPoints = points.map(p => ({
+            x: Math.round(p.x * size.width),
+            y: Math.round(p.y * size.height)
+        }));
+        return {
+            points,
+            pixelPoints,
+            formattedString: formatCalibrationPointsForAPI(points),
+            timestamp: Date.now()
+        };
+    }, [size.width, size.height, formatCalibrationPointsForAPI]);
     // Emit selection change to parent with details
     const emitSelectedChange = React.useCallback((idx) => {
         if (!onSelectionChange)
@@ -778,7 +812,34 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
             ctx.fillStyle = 'rgba(255,255,0,0.9)';
             ctx.fill();
         }
-    }, [polygons, currentPoints, size, selectedIndex, stream?.polygons, anomalyCatalog]);
+        // ===== NEW: Draw calibration points (dots only, no lines) =====
+        if (calibrationPoints.length > 0) {
+            const calibrationColor = 'rgba(255, 165, 0, 1)'; // Orange for visibility
+            const calibrationBgColor = 'rgba(255, 165, 0, 0.3)';
+            calibrationPoints.forEach((point, idx) => {
+                const p = px(point);
+                // Draw outer glow/background
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+                ctx.fillStyle = calibrationBgColor;
+                ctx.fill();
+                // Draw main dot
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = calibrationColor;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                // Draw point number label
+                ctx.font = 'bold 11px sans-serif';
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(String(idx + 1), p.x, p.y);
+            });
+        }
+    }, [polygons, currentPoints, size, selectedIndex, stream?.polygons, anomalyCatalog, calibrationPoints]);
     // Notify changes in both legacy and detailed shapes
     React.useEffect(() => {
         onPolygonsChange?.(polygons);
@@ -823,7 +884,22 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
             x: size.width ? pointPx.x / size.width : 0,
             y: size.height ? pointPx.y / size.height : 0,
         };
-        // Selection mode when drawing is disabled
+        // ===== NEW: Calibration mode - handle 4-point calibration =====
+        if (calibrationEnabled) {
+            if (calibrationPoints.length >= 4)
+                return; // Already complete
+            const newPoints = [...calibrationPoints, point];
+            setCalibrationPoints(newPoints);
+            // Emit change callback
+            const calibData = buildCalibrationData(newPoints);
+            onCalibrationPointsChange?.(calibData);
+            // Auto-disable after 4 points
+            if (newPoints.length === 4) {
+                setCalibrationEnabled(false);
+            }
+            return;
+        }
+        // Selection mode when drawing is disabled (existing behavior unchanged)
         if (!drawingEnabled) {
             let found = null;
             for (let i = polygons.length - 1; i >= 0; i--) {
@@ -837,7 +913,7 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
             emitSelectedChange(found);
             return;
         }
-        // Drawing mode - only allow when drawing is enabled
+        // Drawing mode - only allow when drawing is enabled (existing behavior unchanged)
         // close when near first point
         if (currentPoints.length > 2) {
             const firstPx = {
@@ -910,12 +986,55 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
     };
     // Expand controls handled via Modal
     const canDraw = enabled && drawingEnabled;
+    const canCalibrate = enabled && calibrationEnabled;
     const controlsVisible = {
         draw: showControls?.draw ?? true,
         viewer: showControls?.viewer ?? true,
         reset: showControls?.reset ?? true,
         fullscreen: showControls?.fullscreen ?? true, // re-used as Expand visibility
         save: showControls?.save ?? true,
+        calibration: showControls?.calibration ?? false, // NEW: Default to false (not shown)
+    };
+    // ===== NEW: Calibration mode toggle handler =====
+    const handleCalibrationToggle = () => {
+        const newEnabled = !calibrationEnabled;
+        setCalibrationEnabled(newEnabled);
+        // When enabling calibration, disable polygon drawing
+        if (newEnabled) {
+            setDrawingEnabled(false);
+        }
+    };
+    // ===== NEW: Undo last calibration point =====
+    const handleCalibrationUndo = () => {
+        if (calibrationPoints.length === 0)
+            return;
+        const newPoints = calibrationPoints.slice(0, -1);
+        setCalibrationPoints(newPoints);
+        // Re-enable calibration mode if it was auto-disabled
+        if (calibrationPoints.length === 4) {
+            setCalibrationEnabled(true);
+        }
+        // Emit change
+        if (newPoints.length > 0) {
+            onCalibrationPointsChange?.(buildCalibrationData(newPoints));
+        }
+        else {
+            onCalibrationPointsChange?.(null);
+        }
+    };
+    // ===== NEW: Reset all calibration points =====
+    const handleCalibrationReset = () => {
+        setCalibrationPoints([]);
+        setCalibrationEnabled(false);
+        onCalibrationPointsChange?.(null);
+        onCalibrationReset?.();
+    };
+    // ===== NEW: Save calibration points =====
+    const handleSaveCalibration = () => {
+        if (calibrationPoints.length !== 4 || !onSaveCalibrationPoints)
+            return;
+        const calibData = buildCalibrationData(calibrationPoints);
+        onSaveCalibrationPoints(calibData.formattedString, calibData);
     };
     // Save only the selected polygon
     const handleSaveSelected = () => {
@@ -970,7 +1089,22 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
     //   setPolygonAnomalies(prev => ({ ...prev, [selectedIndex]: [...ids] }));
     //   onAnomalyChange?.(selectedIndex, ids);
     // };
-    return (jsxRuntime.jsxs(antd.Card, { className: cn('w-full h-full', className), styles: { body: { padding: 16 } }, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text$1, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text$1, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text$1, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: setDrawingEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.save && (jsxRuntime.jsx(antd.Tooltip, { title: selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon', children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveSelected, disabled: !enabled || selectedIndex == null, children: "Save" }) })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: isExpanded ? 'Collapse' : 'Expand', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: () => setIsExpanded(v => !v), icon: isExpanded ? jsxRuntime.jsx(icons.ShrinkOutlined, {}) : jsxRuntime.jsx(icons.ArrowsAltOutlined, {}) }) }))] })] }), !isExpanded && (jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black isolate", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full z-0" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0 z-10", style: { pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })), jsxRuntime.jsxs(antd.Modal, { open: isExpanded, onCancel: () => setIsExpanded(false), footer: null, width: '90vw', style: { top: 24 }, styles: { body: { padding: 16 } }, destroyOnClose: true, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text$1, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text$1, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text$1, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: setDrawingEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.save && (jsxRuntime.jsx(antd.Tooltip, { title: selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon', children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveSelected, disabled: !enabled || selectedIndex == null, children: "Save" }) })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: 'Collapse', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: () => setIsExpanded(false), icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}) }) }))] })] }), jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black isolate", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full z-0" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0 z-10", style: { pointerEvents: enabled ? 'auto' : 'none', cursor: canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer' }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })] })] }));
+    return (jsxRuntime.jsxs(antd.Card, { className: cn('w-full h-full', className), styles: { body: { padding: 16 } }, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text$1, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text$1, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text$1, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: (checked) => {
+                                            setDrawingEnabled(checked);
+                                            // Disable calibration when enabling draw
+                                            if (checked)
+                                                setCalibrationEnabled(false);
+                                        }, disabled: calibrationEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.calibration && (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(antd.Tooltip, { title: calibrationEnabled ? 'Calibration mode active (click 4 points)' : 'Enable 4-point calibration mode', children: jsxRuntime.jsx(antd.Button, { size: "small", type: calibrationEnabled ? 'primary' : 'default', onClick: handleCalibrationToggle, disabled: !enabled || calibrationPoints.length === 4, icon: jsxRuntime.jsx(icons.AimOutlined, {}), children: calibrationPoints.length > 0 ? `${calibrationPoints.length}/4` : 'Calibrate' }) }), calibrationPoints.length > 0 && (jsxRuntime.jsx(antd.Tooltip, { title: "Undo last calibration point", children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleCalibrationUndo, disabled: !enabled, icon: jsxRuntime.jsx(icons.UndoOutlined, {}) }) })), calibrationPoints.length > 0 && (jsxRuntime.jsx(antd.Tooltip, { title: "Reset all calibration points", children: jsxRuntime.jsx(antd.Button, { size: "small", danger: true, onClick: handleCalibrationReset, disabled: !enabled, children: "Clear" }) })), calibrationPoints.length === 4 && onSaveCalibrationPoints && (jsxRuntime.jsx(antd.Tooltip, { title: "Save calibration points", children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveCalibration, disabled: !enabled, children: "Save Calibration" }) }))] })), controlsVisible.save && (jsxRuntime.jsx(antd.Tooltip, { title: selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon', children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveSelected, disabled: !enabled || selectedIndex == null, children: "Save" }) })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: isExpanded ? 'Collapse' : 'Expand', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: () => setIsExpanded(v => !v), icon: isExpanded ? jsxRuntime.jsx(icons.ShrinkOutlined, {}) : jsxRuntime.jsx(icons.ArrowsAltOutlined, {}) }) }))] })] }), !isExpanded && (jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black isolate", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full z-0" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0 z-10", style: {
+                                pointerEvents: enabled ? 'auto' : 'none',
+                                cursor: canCalibrate ? 'crosshair' : canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer'
+                            }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })), jsxRuntime.jsxs(antd.Modal, { open: isExpanded, onCancel: () => setIsExpanded(false), footer: null, width: '90vw', style: { top: 24 }, styles: { body: { padding: 16 } }, destroyOnClose: true, children: [jsxRuntime.jsxs("div", { className: "flex items-center justify-between mb-3", children: [jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(Text$1, { strong: true, className: "block", children: title }), jsxRuntime.jsx(Text$1, { type: "secondary", className: "text-xs", children: subtitle })] }), jsxRuntime.jsxs("div", { className: "flex items-center gap-3", children: [controlsVisible.viewer && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text$1, { className: "text-xs", children: "Viewer" }), jsxRuntime.jsx(antd.Switch, { checked: enabled, onChange: setEnabled })] })), controlsVisible.draw && (jsxRuntime.jsxs("div", { className: "flex items-center gap-2", children: [jsxRuntime.jsx(Text$1, { className: "text-xs", children: "Draw" }), jsxRuntime.jsx(antd.Switch, { checked: drawingEnabled, onChange: (checked) => {
+                                                    setDrawingEnabled(checked);
+                                                    if (checked)
+                                                        setCalibrationEnabled(false);
+                                                }, disabled: calibrationEnabled })] })), controlsVisible.reset && (jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleReset, disabled: !enabled, icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), children: "Reset" })), controlsVisible.calibration && (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(antd.Tooltip, { title: calibrationEnabled ? 'Calibration mode active (click 4 points)' : 'Enable 4-point calibration mode', children: jsxRuntime.jsx(antd.Button, { size: "small", type: calibrationEnabled ? 'primary' : 'default', onClick: handleCalibrationToggle, disabled: !enabled || calibrationPoints.length === 4, icon: jsxRuntime.jsx(icons.AimOutlined, {}), children: calibrationPoints.length > 0 ? `${calibrationPoints.length}/4` : 'Calibrate' }) }), calibrationPoints.length > 0 && (jsxRuntime.jsx(antd.Tooltip, { title: "Undo last calibration point", children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: handleCalibrationUndo, disabled: !enabled, icon: jsxRuntime.jsx(icons.UndoOutlined, {}) }) })), calibrationPoints.length > 0 && (jsxRuntime.jsx(antd.Tooltip, { title: "Reset all calibration points", children: jsxRuntime.jsx(antd.Button, { size: "small", danger: true, onClick: handleCalibrationReset, disabled: !enabled, children: "Clear" }) })), calibrationPoints.length === 4 && onSaveCalibrationPoints && (jsxRuntime.jsx(antd.Tooltip, { title: "Save calibration points", children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveCalibration, disabled: !enabled, children: "Save Calibration" }) }))] })), controlsVisible.save && (jsxRuntime.jsx(antd.Tooltip, { title: selectedIndex == null ? 'Select a polygon to enable Save' : 'Save selected polygon', children: jsxRuntime.jsx(antd.Button, { size: "small", type: "primary", onClick: handleSaveSelected, disabled: !enabled || selectedIndex == null, children: "Save" }) })), controlsVisible.fullscreen && (jsxRuntime.jsx(antd.Tooltip, { title: 'Collapse', children: jsxRuntime.jsx(antd.Button, { size: "small", onClick: () => setIsExpanded(false), icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}) }) }))] })] }), jsxRuntime.jsx("div", { ref: containerRef, className: "relative w-full overflow-hidden rounded-md bg-black isolate", style: { aspectRatio: '16 / 9' }, children: enabled ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: true, controls: false, className: "w-full h-full z-0" }), jsxRuntime.jsx("canvas", { ref: canvasRef, className: "absolute inset-0 z-10", style: {
+                                        pointerEvents: enabled ? 'auto' : 'none',
+                                        cursor: canCalibrate ? 'crosshair' : canDraw ? 'crosshair' : drawingEnabled ? 'default' : 'pointer'
+                                    }, onClick: handleCanvasClick })] })) : (jsxRuntime.jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: jsxRuntime.jsxs("div", { className: "text-center text-gray-300", children: [jsxRuntime.jsx("div", { className: "text-2xl mb-2", children: "Viewer is OFF" }), jsxRuntime.jsx("div", { className: "text-sm opacity-80", children: "Toggle ON to start live feed" })] }) })) })] })] }));
 };
 
 const { Text } = antd.Typography;

@@ -25,6 +25,19 @@ export interface StreamPolygon {
     points: Polygon;
     anomalyIds?: number[];
 }
+export interface CalibrationData {
+    /** Normalized points (0..1) - exactly 4 points */
+    points: NormalizedPoint[];
+    /** Pixel coordinates at the time of capture */
+    pixelPoints: {
+        x: number;
+        y: number;
+    }[];
+    /** Formatted string for API: "[(x,y), (x,y), (x,y), (x,y)]" */
+    formattedString: string;
+    /** Timestamp when calibration was completed */
+    timestamp: number;
+}
 export interface VideoPlayerProps {
     stream: CameraStream;
     autoPlay?: boolean;
