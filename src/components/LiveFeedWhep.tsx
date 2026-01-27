@@ -322,7 +322,7 @@ const WHEPVideoPlayer: React.FC<WHEPVideoPlayerProps> = ({
         <>
           <video
             ref={videoRef}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-fill"
             autoPlay
             playsInline
             muted={isMuted}

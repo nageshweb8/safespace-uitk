@@ -7,6 +7,7 @@ export * from './shared';
 export * from './ThemeProvider';
 export * from './Tree';
 export * from './LiveVideos';
+export * from './LiveVideosWhep';
 export * from './ProfileEmbedding';
 
 // Re-export commonly used Ant Design components with SafeSpace styling
