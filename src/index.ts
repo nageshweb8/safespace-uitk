@@ -17,7 +17,10 @@ export type {
   Polygon,
   StreamPolygon,
   WHEPConfig,
-  LiveFeedWhepProps
+  LiveFeedWhepProps,
+  WHEPCameraStream,
+  GridLayoutPattern,
+  LiveVideosWhepProps
 } from './types/video';
 export type { SafeSpaceTheme } from './types/theme';
 

@@ -974,10 +974,10 @@ selectedPolygonAnomalyIds, onSelectionChange, onReset, showControls, }) => {
 
 const { Text } = Typography;
 // Default WHEP configuration values
-const DEFAULT_RECONNECT_DELAY = 5000;
-const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
-const DEFAULT_HEALTH_CHECK_INTERVAL = 5000;
-const DEFAULT_STREAM_STALL_TIMEOUT = 12000;
+const DEFAULT_RECONNECT_DELAY$1 = 5000;
+const DEFAULT_MAX_RECONNECT_ATTEMPTS$1 = 3;
+const DEFAULT_HEALTH_CHECK_INTERVAL$1 = 5000;
+const DEFAULT_STREAM_STALL_TIMEOUT$1 = 12000;
 /**
  * WHEPVideoPlayer - Internal WHEP video player component
  * Handles WebRTC WHEP connection and playback with LiveFeedPlayer-style UI
@@ -995,7 +995,7 @@ const WHEPVideoPlayer = ({ stream, isMuted = true, showControls = true, showLive
     const [, setCurrentReconnectCount] = useState(0);
     const [isHealthy, setIsHealthy] = useState(true);
     // Extract config values with defaults
-    const { baseUrl, authCredentials, reconnectDelay = DEFAULT_RECONNECT_DELAY, maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS, healthCheckInterval = DEFAULT_HEALTH_CHECK_INTERVAL, streamStallTimeout = DEFAULT_STREAM_STALL_TIMEOUT, } = whepConfig;
+    const { baseUrl, authCredentials, reconnectDelay = DEFAULT_RECONNECT_DELAY$1, maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS$1, healthCheckInterval = DEFAULT_HEALTH_CHECK_INTERVAL$1, streamStallTimeout = DEFAULT_STREAM_STALL_TIMEOUT$1, } = whepConfig;
     // Get camera ID from stream for WHEP URL
     const cameraId = useMemo(() => {
         // Support multiple ways to get the unique identifier
@@ -1180,7 +1180,7 @@ const WHEPVideoPlayer = ({ stream, isMuted = true, showControls = true, showLive
             videoRef.current.muted = isMuted;
         }
     }, [isMuted]);
-    return (jsx("div", { ref: containerRef, className: cn('relative w-full h-full overflow-hidden rounded-lg bg-black', className), style: isMain ? { aspectRatio: '16/9', minHeight: '400px' } : {}, children: status === 'error' && reconnectAttemptsRef.current >= maxReconnectAttempts ? (jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxs("div", { className: "text-center", children: [jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: "Video playback error" }), jsx(Button, { type: "primary", icon: jsx(ReloadOutlined, {}), onClick: handleRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxs(Fragment, { children: [jsx("video", { ref: videoRef, className: "w-full h-full object-cover", autoPlay: true, playsInline: true, muted: isMuted }), jsxs("div", { className: "absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-2", children: [jsx("span", { children: cameraName }), showLiveIndicator && status === 'connected' && (jsx("span", { className: "px-1 bg-red-600 rounded text-[10px]", children: "LIVE" })), status === 'connecting' && (jsxs("span", { className: "px-1 bg-yellow-500 rounded text-[10px] flex items-center gap-1", children: [jsx("div", { className: "w-1.5 h-1.5 bg-white rounded-full animate-pulse" }), "Connecting"] })), !isHealthy && status === 'connected' && (jsx("span", { className: "px-1 bg-yellow-500 rounded text-[10px]", children: "Buffering" }))] }), showControls && (jsxs("div", { className: "absolute top-2 right-2 flex gap-1", children: [jsx(Tooltip, { title: isPlaying ? 'Pause' : 'Play', children: jsx(Button, { type: "text", size: "small", icon: isPlaying ? jsx(PauseOutlined, {}) : jsx(PlayCircleOutlined, {}), onClick: (e) => {
+    return (jsx("div", { ref: containerRef, className: cn('relative w-full h-full overflow-hidden rounded-lg bg-black', className), style: isMain ? { aspectRatio: '16/9', minHeight: '400px' } : {}, children: status === 'error' && reconnectAttemptsRef.current >= maxReconnectAttempts ? (jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxs("div", { className: "text-center", children: [jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: "Video playback error" }), jsx(Button, { type: "primary", icon: jsx(ReloadOutlined, {}), onClick: handleRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxs(Fragment, { children: [jsx("video", { ref: videoRef, className: "w-full h-full object-fill", autoPlay: true, playsInline: true, muted: isMuted }), jsxs("div", { className: "absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-2", children: [jsx("span", { children: cameraName }), showLiveIndicator && status === 'connected' && (jsx("span", { className: "px-1 bg-red-600 rounded text-[10px]", children: "LIVE" })), status === 'connecting' && (jsxs("span", { className: "px-1 bg-yellow-500 rounded text-[10px] flex items-center gap-1", children: [jsx("div", { className: "w-1.5 h-1.5 bg-white rounded-full animate-pulse" }), "Connecting"] })), !isHealthy && status === 'connected' && (jsx("span", { className: "px-1 bg-yellow-500 rounded text-[10px]", children: "Buffering" }))] }), showControls && (jsxs("div", { className: "absolute top-2 right-2 flex gap-1", children: [jsx(Tooltip, { title: isPlaying ? 'Pause' : 'Play', children: jsx(Button, { type: "text", size: "small", icon: isPlaying ? jsx(PauseOutlined, {}) : jsx(PlayCircleOutlined, {}), onClick: (e) => {
                                     e.stopPropagation();
                                     onPlayPause?.();
                                 }, className: "text-white hover:text-gray-300 hover:bg-black/20" }) }), jsx(Tooltip, { title: isMuted ? 'Unmute' : 'Mute', children: jsx(Button, { type: "text", size: "small", icon: isMuted ? jsx(MutedOutlined, {}) : jsx(SoundOutlined, {}), onClick: (e) => {
@@ -2066,16 +2066,16 @@ const PatternMenu = ({ activePattern, availablePatterns, onSelect, placement = '
     return (jsx(Popover, { trigger: "click", content: content, placement: placement === 'top' ? 'top' : 'bottom', open: open, onOpenChange: setOpen, overlayInnerStyle: { padding: 0 }, children: jsx(Button, { icon: jsx(AppstoreOutlined, {}), children: triggerLabel }) }));
 };
 
-const DEFAULT_HEIGHT = 'calc(100vh - 140px)';
-const DEFAULT_TITLE = 'Live Videos';
+const DEFAULT_HEIGHT$1 = 'calc(100vh - 140px)';
+const DEFAULT_TITLE$1 = 'Live Videos';
 const DEFAULT_QUICK_PATTERNS = ['1', '2', '4', '8', '14', '28'];
-const LiveVideos = ({ streams, displayStreams, loading = false, title = DEFAULT_TITLE, pattern, defaultPattern, autoPattern = true, availablePatterns, quickPatternKeys = DEFAULT_QUICK_PATTERNS, onPatternChange, onTileClick, onStreamError, showPatternMenu = true, patternMenuPlacement = 'bottom', showTileLabels = true, tileLabelPlacement = 'top', showTileControls = true, tileControlsSize = 'small', autoPlay = true, muted = true, height = DEFAULT_HEIGHT, className, emptyState, }) => {
+const LiveVideos = ({ streams, displayStreams, loading = false, title = DEFAULT_TITLE$1, pattern, defaultPattern, autoPattern = true, availablePatterns, quickPatternKeys = DEFAULT_QUICK_PATTERNS, onPatternChange, onTileClick, onStreamError, showPatternMenu = true, patternMenuPlacement = 'bottom', showTileLabels = true, tileLabelPlacement = 'top', showTileControls = true, tileControlsSize = 'small', autoPlay = true, muted = true, height = DEFAULT_HEIGHT$1, className, emptyState, }) => {
     const effectiveStreams = streams ?? [];
     const renderStreams = displayStreams && displayStreams.length > 0 ? displayStreams : effectiveStreams;
     const resolvedHeight = useMemo(() => {
         if (typeof height === 'number')
             return `${height}px`;
-        return height || DEFAULT_HEIGHT;
+        return height || DEFAULT_HEIGHT$1;
     }, [height]);
     const definitions = useMemo(() => resolvePatternDefinitions(availablePatterns || DEFAULT_PATTERN_KEYS), [availablePatterns]);
     const definitionMap = useMemo(() => new Map(definitions.map(def => [def.key, def])), [definitions]);
@@ -2327,6 +2327,457 @@ const LiveVideos = ({ streams, displayStreams, loading = false, title = DEFAULT_
                                             ? 'border-[#1f4ea8] bg-[#1f4ea8] text-white shadow-sm'
                                             : 'border-slate-300 bg-white text-[#0b1f3a] hover:bg-slate-100'), children: shortcutLabel }, patternKey));
                                 }) }))] }))] })), jsx("div", { className: "flex-1 min-h-[240px]", children: patternContent }), fullscreenStream && (jsx(FullscreenModal, { isOpen: !!fullscreenStream, stream: fullscreenStream, isPlaying: true, isMuted: tileState[fullscreenStream.id]?.muted ?? muted, onClose: () => setFullscreenStream(null), onError: error => onStreamError?.(error, fullscreenStream) }))] }));
+};
+
+// Default WHEP configuration values
+const DEFAULT_RECONNECT_DELAY = 5000;
+const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
+const DEFAULT_HEALTH_CHECK_INTERVAL = 5000;
+const DEFAULT_STREAM_STALL_TIMEOUT = 12000;
+/**
+ * WHEPVideoTile - Individual WHEP video tile component
+ * Handles WebRTC WHEP connection for a single camera stream
+ */
+const WHEPVideoTileInner = ({ stream, index, whepConfig, showLabel = true, labelPlacement = 'top', showControls = true, isSelected = false, enableSelection = false, onToggleSelect, 
+// onFullscreen - Reserved for future use
+onClick, onError, className, style, }) => {
+    const videoRef = useRef(null);
+    const containerRef = useRef(null);
+    const pcRef = useRef(null);
+    const reconnectTimeoutRef = useRef(null);
+    const healthCheckIntervalRef = useRef(null);
+    const lastFrameTimeRef = useRef(Date.now());
+    const reconnectAttemptsRef = useRef(0);
+    const [status, setStatus] = useState('disconnected');
+    const [isHealthy, setIsHealthy] = useState(true);
+    const [reconnectCount, setReconnectCount] = useState(0);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const hasStream = !!stream;
+    const streamId = stream?.id ?? '';
+    // Extract config values with defaults
+    const { baseUrl, authCredentials, reconnectDelay = DEFAULT_RECONNECT_DELAY, maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS, healthCheckInterval = DEFAULT_HEALTH_CHECK_INTERVAL, streamStallTimeout = DEFAULT_STREAM_STALL_TIMEOUT, } = whepConfig;
+    // Get camera ID for WHEP URL
+    const cameraId = stream?.cameraId ||
+        stream?.uniqueIdentifier ||
+        stream?.guid ||
+        stream?.originalData?.uniqueIdentifier ||
+        stream?.originalData?.guid ||
+        stream?.originalData?.key ||
+        stream?.id || '';
+    const cameraName = stream?.title || stream?.originalData?.label || `Camera ${index + 1}`;
+    // Cleanup function
+    const cleanup = useCallback(() => {
+        if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+        }
+        if (healthCheckIntervalRef.current) {
+            clearInterval(healthCheckIntervalRef.current);
+            healthCheckIntervalRef.current = null;
+        }
+        if (pcRef.current) {
+            pcRef.current.close();
+            pcRef.current = null;
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+    }, []);
+    // Stream health monitoring
+    const startStreamHealthMonitor = useCallback(() => {
+        const videoElement = videoRef.current;
+        if (!videoElement)
+            return;
+        videoElement.onplaying = () => {
+            lastFrameTimeRef.current = Date.now();
+            setIsHealthy(true);
+        };
+        videoElement.ontimeupdate = () => {
+            lastFrameTimeRef.current = Date.now();
+            setIsHealthy(true);
+        };
+        videoElement.onstalled = () => {
+            setIsHealthy(false);
+        };
+        videoElement.onerror = () => {
+            handleStreamFailureInternal('Video element error');
+        };
+        // Periodic health check
+        healthCheckIntervalRef.current = setInterval(() => {
+            const timeSinceLastFrame = Date.now() - lastFrameTimeRef.current;
+            if (timeSinceLastFrame > streamStallTimeout) {
+                setIsHealthy(false);
+                handleStreamFailureInternal('Stream stalled - no frames received');
+            }
+        }, healthCheckInterval);
+        // Internal handler to avoid circular dependency
+        function handleStreamFailureInternal(reason) {
+            if (healthCheckIntervalRef.current) {
+                clearInterval(healthCheckIntervalRef.current);
+                healthCheckIntervalRef.current = null;
+            }
+            const video = videoRef.current;
+            if (video) {
+                video.onplaying = null;
+                video.ontimeupdate = null;
+                video.onstalled = null;
+                video.onwaiting = null;
+                video.onerror = null;
+            }
+            if (pcRef.current) {
+                pcRef.current.close();
+                pcRef.current = null;
+            }
+            setStatus('error');
+            if (onError && streamId) {
+                onError(new Error(reason), streamId);
+            }
+        }
+    }, [healthCheckInterval, streamStallTimeout, onError, streamId]);
+    // Stop stream health monitor
+    const stopStreamHealthMonitor = useCallback(() => {
+        if (healthCheckIntervalRef.current) {
+            clearInterval(healthCheckIntervalRef.current);
+            healthCheckIntervalRef.current = null;
+        }
+        const videoElement = videoRef.current;
+        if (videoElement) {
+            videoElement.onplaying = null;
+            videoElement.ontimeupdate = null;
+            videoElement.onstalled = null;
+            videoElement.onwaiting = null;
+            videoElement.onerror = null;
+        }
+    }, []);
+    // Handle stream failure
+    const handleStreamFailure = useCallback((reason) => {
+        stopStreamHealthMonitor();
+        if (pcRef.current) {
+            pcRef.current.close();
+            pcRef.current = null;
+        }
+        setStatus('error');
+        if (onError && streamId) {
+            onError(new Error(reason), streamId);
+        }
+        // Trigger reconnection (handled via ref to avoid circular dependency)
+        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+            reconnectAttemptsRef.current++;
+            setReconnectCount(reconnectAttemptsRef.current);
+        }
+    }, [stopStreamHealthMonitor, maxReconnectAttempts, onError, streamId]);
+    // Connect to stream
+    const connectToStream = useCallback(async () => {
+        if (!cameraId || !baseUrl) {
+            setStatus('error');
+            return;
+        }
+        try {
+            setStatus('connecting');
+            // Create RTCPeerConnection
+            const pc = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun.cloudflare.com:3478' }
+                ],
+                bundlePolicy: 'max-bundle',
+            });
+            pcRef.current = pc;
+            // Handle incoming tracks
+            pc.ontrack = (event) => {
+                if (videoRef.current && event.streams[0]) {
+                    videoRef.current.srcObject = event.streams[0];
+                    videoRef.current.play()
+                        .then(() => {
+                        lastFrameTimeRef.current = Date.now();
+                    })
+                        .catch(e => {
+                        handleStreamFailure(`Failed to start video playback: ${e.message}`);
+                    });
+                }
+            };
+            // Handle ICE connection state
+            pc.oniceconnectionstatechange = () => {
+                if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+                    setStatus('connected');
+                    reconnectAttemptsRef.current = 0;
+                    setReconnectCount(0);
+                    startStreamHealthMonitor();
+                }
+                else if (pc.iceConnectionState === 'disconnected') {
+                    handleStreamFailure('ICE connection disconnected');
+                }
+                else if (pc.iceConnectionState === 'failed') {
+                    handleStreamFailure('ICE connection failed');
+                }
+            };
+            // Handle connection state
+            pc.onconnectionstatechange = () => {
+                if (pc.connectionState === 'failed') {
+                    handleStreamFailure('Peer connection failed');
+                }
+            };
+            // Add transceiver for receiving video only
+            pc.addTransceiver('video', { direction: 'recvonly' });
+            // Create offer
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            // Send offer to WHEP endpoint
+            const whepUrl = `${baseUrl}/${cameraId}/whep`;
+            const headers = new Headers();
+            headers.append('Content-Type', 'application/sdp');
+            if (authCredentials) {
+                headers.append('Authorization', `Basic ${btoa(authCredentials)}`);
+            }
+            const response = await fetch(whepUrl, {
+                method: 'POST',
+                headers,
+                body: offer.sdp,
+            });
+            if (!response.ok) {
+                throw new Error(`WHEP request failed: ${response.status} ${response.statusText}`);
+            }
+            // Set remote description from answer
+            const answerSdp = await response.text();
+            await pc.setRemoteDescription({
+                type: 'answer',
+                sdp: answerSdp,
+            });
+        }
+        catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Connection failed';
+            handleStreamFailure(errorMessage);
+        }
+    }, [cameraId, baseUrl, authCredentials, startStreamHealthMonitor, handleStreamFailure]);
+    // Initial connection and reconnection effect
+    useEffect(() => {
+        if (hasStream && cameraId) {
+            connectToStream();
+        }
+        return () => {
+            cleanup();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cameraId, hasStream]);
+    // Reconnection effect
+    useEffect(() => {
+        if (reconnectCount > 0 && reconnectCount < maxReconnectAttempts) {
+            reconnectTimeoutRef.current = setTimeout(() => {
+                connectToStream();
+            }, reconnectDelay);
+        }
+        return () => {
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+            }
+        };
+    }, [reconnectCount, maxReconnectAttempts, reconnectDelay, connectToStream]);
+    // Manual retry handler
+    const handleRetry = useCallback(() => {
+        reconnectAttemptsRef.current = 0;
+        setReconnectCount(0);
+        connectToStream();
+    }, [connectToStream]);
+    // Fullscreen handler
+    const toggleFullscreen = useCallback(async () => {
+        if (!containerRef.current)
+            return;
+        try {
+            if (!document.fullscreenElement) {
+                await containerRef.current.requestFullscreen();
+                setIsFullscreen(true);
+            }
+            else {
+                await document.exitFullscreen();
+                setIsFullscreen(false);
+            }
+        }
+        catch (err) {
+            console.error('Fullscreen error:', err);
+        }
+    }, []);
+    // Listen for fullscreen changes
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement && document.fullscreenElement === containerRef.current);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+    // Handle tile click
+    const handleClick = useCallback(() => {
+        if (onClick && streamId) {
+            onClick(streamId);
+        }
+    }, [onClick, streamId]);
+    // Handle selection toggle
+    const handleSelectionToggle = useCallback((e) => {
+        e.stopPropagation();
+        if (onToggleSelect && streamId) {
+            onToggleSelect(streamId);
+        }
+    }, [onToggleSelect, streamId]);
+    // Empty slot
+    if (!hasStream) {
+        return (jsx("div", { className: cn('relative bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center', className), style: style, children: jsxs("div", { className: "text-center text-gray-500", children: [jsx("svg", { className: "w-12 h-12 mx-auto mb-2 opacity-50", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 1.5, d: "M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" }) }), jsx("span", { className: "text-sm", children: "No camera" })] }) }));
+    }
+    return (jsxs("div", { ref: containerRef, className: cn('relative bg-gray-900 rounded-lg overflow-hidden group', isSelected && 'ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-900', className), style: style, onClick: handleClick, children: [jsx("video", { ref: videoRef, className: "w-full h-full object-cover", autoPlay: true, playsInline: true, muted: true }), enableSelection && (jsx("div", { className: "absolute top-2 left-2 z-20", children: jsx("label", { className: "flex items-center cursor-pointer", onClick: handleSelectionToggle, children: jsx("input", { type: "checkbox", checked: isSelected, onChange: () => { }, className: "w-5 h-5 rounded border-2 border-white bg-black/40 text-blue-500 \n                         focus:ring-blue-500 focus:ring-offset-0 cursor-pointer\n                         checked:bg-blue-500 checked:border-blue-500" }) }) })), showLabel && (jsx("div", { className: cn('absolute left-2 bg-black/60 text-white px-3 py-1 rounded text-sm font-medium z-10', labelPlacement === 'top' ? 'top-2' : 'bottom-2', enableSelection && labelPlacement === 'top' && 'left-10'), children: cameraName })), jsxs("div", { className: "absolute top-2 right-2 flex flex-col items-end gap-1 z-10", children: [status === 'connecting' && (jsxs("div", { className: "bg-yellow-500 text-white px-2 py-1 rounded text-xs flex items-center gap-1", children: [jsx("div", { className: "w-2 h-2 bg-white rounded-full animate-pulse" }), "Connecting"] })), status === 'connected' && (jsxs("div", { className: cn('text-white px-2 py-1 rounded text-xs flex items-center gap-1', isHealthy ? 'bg-green-500' : 'bg-yellow-500'), children: [jsx("div", { className: cn('w-2 h-2 bg-white rounded-full', !isHealthy && 'animate-pulse') }), isHealthy ? 'Live' : 'Buffering'] })), status === 'error' && reconnectCount > 0 && reconnectCount < maxReconnectAttempts && (jsxs("div", { className: "bg-orange-500 text-white px-2 py-0.5 rounded text-[10px]", children: ["Retry: ", reconnectCount, "/", maxReconnectAttempts] }))] }), showControls && status === 'connected' && (jsx("div", { className: "absolute bottom-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10", children: jsx("button", { onClick: (e) => {
+                        e.stopPropagation();
+                        toggleFullscreen();
+                    }, className: "bg-black/60 hover:bg-black/80 text-white p-2 rounded transition-colors", title: isFullscreen ? "Exit Fullscreen" : "Fullscreen", children: isFullscreen ? (jsx("svg", { className: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", children: jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M6 18L18 6M6 6l12 12" }) })) : (jsx("svg", { className: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", children: jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" }) })) }) })), (status === 'disconnected' || status === 'error') && (jsx("div", { className: "absolute inset-0 flex items-center justify-center bg-gray-900", children: jsxs("div", { className: "text-center text-gray-400", children: [jsx("svg", { className: "w-16 h-16 mx-auto mb-2 opacity-50", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 1.5, d: "M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" }) }), jsx("p", { className: "text-sm font-medium", children: status === 'error' ? 'Failed to fetch' : 'No Signal' }), reconnectAttemptsRef.current > 0 && reconnectAttemptsRef.current < maxReconnectAttempts && (jsxs("p", { className: "text-xs mt-2", children: ["Reconnecting in ", Math.ceil(reconnectDelay / 1000), "s..."] })), reconnectAttemptsRef.current >= maxReconnectAttempts && (jsx("button", { onClick: (e) => {
+                                e.stopPropagation();
+                                handleRetry();
+                            }, className: "mt-3 px-4 py-2 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors", children: "Retry Connection" }))] }) }))] }));
+};
+const WHEPVideoTile = memo(WHEPVideoTileInner);
+
+const DEFAULT_HEIGHT = 'calc(100vh - 140px)';
+const DEFAULT_TITLE = 'Live Videos';
+const DEFAULT_LAYOUT = '2x2';
+const ALL_LAYOUTS = ['1x1', '2x2', '3x3', '4x4', '5x5', '6x6'];
+/** Grid layout definitions */
+const GRID_CONFIGS = {
+    '1x1': { cols: 1, max: 1, label: '1 camera - Single view' },
+    '2x2': { cols: 2, max: 4, label: '4 cameras - Quad view' },
+    '3x3': { cols: 3, max: 9, label: '9 cameras - 3x3 grid' },
+    '4x4': { cols: 4, max: 16, label: '16 cameras - 4x4 grid' },
+    '5x5': { cols: 5, max: 25, label: '25 cameras - 5x5 grid' },
+    '6x6': { cols: 6, max: 36, label: '36 cameras - Control room view' },
+};
+/**
+ * LiveVideosWhep Component
+ *
+ * Multi-camera WHEP video viewer with grid layouts for local intranet streaming.
+ * Uses WebRTC WHEP (WebRTC-HTTP Egress Protocol) for streaming video from
+ * local media servers like MediaMTX.
+ *
+ * Features:
+ * - Multiple grid layout patterns (1x1 to 6x6)
+ * - WHEP streaming for local/intranet cameras
+ * - Tile selection for "Open in Layout" functionality
+ * - Per-tile fullscreen support
+ * - Auto-reconnection with health monitoring
+ * - Configurable WHEP settings (baseUrl, auth, timeouts)
+ */
+const LiveVideosWhep = ({ streams, whepConfig, gridLayout, defaultGridLayout = DEFAULT_LAYOUT, availableLayouts = ALL_LAYOUTS, loading = false, title = DEFAULT_TITLE, onLayoutChange, onTileClick, onStreamError, onSelectionChange, showLayoutSelector = true, showTileLabels = true, tileLabelPlacement = 'top', showTileControls = true, enableTileSelection = false, enableOpenInLayout = false, layoutViewerPath = '/layout-viewer', height = DEFAULT_HEIGHT, className, emptyState, }) => {
+    // Grid layout state (controlled or uncontrolled)
+    const isControlled = gridLayout !== undefined;
+    const [internalLayout, setInternalLayout] = useState(defaultGridLayout);
+    const activeLayout = isControlled ? gridLayout : internalLayout;
+    // Selection state
+    const [selectedCameras, setSelectedCameras] = useState(new Set());
+    // Resolve height
+    const resolvedHeight = useMemo(() => {
+        if (typeof height === 'number')
+            return `${height}px`;
+        return height || DEFAULT_HEIGHT;
+    }, [height]);
+    // Get config for current layout
+    const layoutConfig = useMemo(() => {
+        return GRID_CONFIGS[activeLayout] || GRID_CONFIGS[DEFAULT_LAYOUT];
+    }, [activeLayout]);
+    // Limit streams to max for current layout
+    const displayedStreams = useMemo(() => {
+        return streams.slice(0, layoutConfig.max);
+    }, [streams, layoutConfig.max]);
+    // Get grid classes for responsive layout
+    const gridClasses = useMemo(() => {
+        const gridMap = {
+            '1x1': 'grid-cols-1',
+            '2x2': 'grid-cols-1 md:grid-cols-2',
+            '3x3': 'grid-cols-2 lg:grid-cols-3',
+            '4x4': 'grid-cols-2 lg:grid-cols-4',
+            '5x5': 'grid-cols-3 lg:grid-cols-5',
+            '6x6': 'grid-cols-3 lg:grid-cols-6',
+        };
+        return gridMap[activeLayout] || 'grid-cols-2';
+    }, [activeLayout]);
+    // Handle layout change
+    const handleLayoutChange = useCallback((layout) => {
+        if (!isControlled) {
+            setInternalLayout(layout);
+        }
+        onLayoutChange?.(layout);
+    }, [isControlled, onLayoutChange]);
+    // Handle tile selection toggle
+    const handleToggleSelect = useCallback((streamId) => {
+        setSelectedCameras(prev => {
+            const newSelected = new Set(prev);
+            if (newSelected.has(streamId)) {
+                newSelected.delete(streamId);
+            }
+            else {
+                newSelected.add(streamId);
+            }
+            // Notify parent of selection change
+            if (onSelectionChange) {
+                onSelectionChange(Array.from(newSelected));
+            }
+            return newSelected;
+        });
+    }, [onSelectionChange]);
+    // Clear selection
+    const clearSelection = useCallback(() => {
+        setSelectedCameras(new Set());
+        if (onSelectionChange) {
+            onSelectionChange([]);
+        }
+    }, [onSelectionChange]);
+    // Handle tile click
+    const handleTileClick = useCallback((streamId) => {
+        const index = displayedStreams.findIndex(s => s.id === streamId);
+        const stream = displayedStreams.find(s => s.id === streamId);
+        if (stream && onTileClick) {
+            onTileClick(stream, index);
+        }
+    }, [displayedStreams, onTileClick]);
+    // Handle stream error
+    const handleStreamError = useCallback((error, streamId) => {
+        const stream = displayedStreams.find(s => s.id === streamId);
+        if (stream && onStreamError) {
+            onStreamError(error, stream);
+        }
+    }, [displayedStreams, onStreamError]);
+    // Build camera ID for WHEP URL
+    const getCameraId = useCallback((stream) => {
+        return stream.cameraId ||
+            stream.uniqueIdentifier ||
+            stream.guid ||
+            stream.originalData?.uniqueIdentifier ||
+            stream.originalData?.guid ||
+            stream.originalData?.key ||
+            stream.id;
+    }, []);
+    // Open selected cameras in layout viewer
+    const openInLayout = useCallback(() => {
+        const camerasToOpen = selectedCameras.size > 0
+            ? Array.from(selectedCameras)
+            : displayedStreams.map(s => getCameraId(s));
+        if (camerasToOpen.length === 0)
+            return;
+        const cameraParams = camerasToOpen
+            .slice(0, layoutConfig.max)
+            .map((id, idx) => `camera${idx}=${encodeURIComponent(id)}`)
+            .join('&');
+        const url = `${layoutViewerPath}?layout=${activeLayout}&${cameraParams}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }, [selectedCameras, displayedStreams, getCameraId, layoutConfig.max, layoutViewerPath, activeLayout]);
+    // Render loading state
+    if (loading) {
+        return (jsx("div", { className: cn('flex flex-col bg-white', className), style: { height: resolvedHeight }, children: jsx("div", { className: "flex items-center justify-center flex-1", children: jsx(Spin, { size: "large" }) }) }));
+    }
+    // Render empty state
+    if (displayedStreams.length === 0) {
+        return (jsx("div", { className: cn('flex flex-col bg-white', className), style: { height: resolvedHeight }, children: emptyState ?? (jsx("div", { className: "flex items-center justify-center flex-1", children: jsxs("div", { className: "text-center text-gray-500", children: [jsx("svg", { className: "w-16 h-16 mx-auto mb-4 opacity-50", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 1.5, d: "M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" }) }), jsx("p", { className: "text-lg font-medium", children: "No cameras available" }), jsx("p", { className: "text-sm text-gray-400 mt-1", children: "Add cameras to view them here" })] }) })) }));
+    }
+    return (jsxs("div", { className: cn('flex flex-col bg-white', className), style: { height: resolvedHeight }, children: [(showLayoutSelector || title) && (jsx("div", { className: "bg-white border-b border-gray-200 px-4 py-3", children: jsxs("div", { className: "flex justify-between items-center", children: [jsx("div", { className: "flex items-center gap-3", children: title && (jsx("span", { className: "text-base font-semibold text-blue-600 border-b-2 border-blue-600 pb-1 px-1", children: title })) }), jsxs("div", { className: "flex items-center gap-3", children: [showLayoutSelector && (jsxs("div", { className: "flex items-center gap-1 flex-wrap", children: [jsx("svg", { className: "w-4 h-4 text-gray-600", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" }) }), jsx("span", { className: "text-xs font-medium text-gray-600 mr-1", children: "Change pattern" }), availableLayouts.map((layout) => (jsx("button", { onClick: () => handleLayoutChange(layout), className: cn('px-3 py-1.5 text-xs font-semibold rounded-md transition-colors', activeLayout === layout
+                                                ? 'bg-gray-800 text-white'
+                                                : 'text-gray-600 hover:bg-gray-100'), title: GRID_CONFIGS[layout].label, children: layout.toUpperCase() }, layout)))] })), enableOpenInLayout && (jsxs("button", { onClick: openInLayout, disabled: displayedStreams.length === 0, className: cn('flex items-center gap-2 px-4 py-2 rounded-md transition-colors shadow-sm', displayedStreams.length > 0
+                                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'), title: displayedStreams.length > 0
+                                        ? `Open ${selectedCameras.size || displayedStreams.length} camera(s) in new window`
+                                        : "No cameras to open", children: [jsx("svg", { className: "w-4 h-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" }) }), jsx("span", { className: "text-xs font-semibold", children: selectedCameras.size > 0 ? `Open Layout (${selectedCameras.size})` : 'Open Layout' })] }))] })] }) })), jsxs("div", { className: "flex-1 p-4 bg-gray-100 overflow-auto", children: [jsxs("div", { className: cn('grid gap-2', gridClasses), children: [displayedStreams.map((stream, index) => (jsx("div", { className: "aspect-video", children: jsx(WHEPVideoTile, { stream: stream, index: index, whepConfig: whepConfig, showLabel: showTileLabels, labelPlacement: tileLabelPlacement, showControls: showTileControls, enableSelection: enableTileSelection, isSelected: selectedCameras.has(stream.id), onToggleSelect: handleToggleSelect, onClick: onTileClick ? handleTileClick : undefined, onError: handleStreamError, className: "w-full h-full" }) }, stream.id))), Array.from({ length: Math.max(0, layoutConfig.max - displayedStreams.length) }).map((_, index) => (jsx("div", { className: "aspect-video", children: jsx(WHEPVideoTile, { stream: undefined, index: displayedStreams.length + index, whepConfig: whepConfig, className: "w-full h-full" }) }, `empty-${index}`)))] }), enableTileSelection && selectedCameras.size > 0 && (jsxs("div", { className: "mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between", children: [jsxs("div", { className: "flex items-center gap-2", children: [jsxs("span", { className: "text-sm font-medium text-blue-600", children: [selectedCameras.size, " camera", selectedCameras.size !== 1 ? 's' : '', " selected"] }), jsx("button", { onClick: clearSelection, className: "text-xs text-gray-500 hover:text-gray-700 underline", children: "Clear selection" })] }), enableOpenInLayout && (jsxs("button", { onClick: openInLayout, className: "flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-md hover:bg-blue-700 transition-colors", children: [jsx("svg", { className: "w-3 h-3", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" }) }), "Open ", selectedCameras.size, " in Layout"] }))] }))] })] }));
 };
 
 // Constants
@@ -2900,5 +3351,5 @@ const useTreeState = ({ initialData, initialSelectedKeys = [], initialExpandedKe
 // Version
 const version = '0.1.4';
 
-export { AdvancedModeCapture, BasicModeCapture, FullscreenModal, LiveFeedPlayer, LiveFeedViewer, LiveFeedWhep, LiveVideos, MainVideoPlayer, ProfileEmbedding, ProgressBar, SafeSpaceThemeProvider, StreamInfo, ThumbnailGrid, Tree, TreeNodeComponent, TreeSearch, VideoControls, VideoPlayer, cn, useSafeSpaceTheme, useStreamLayout, useTreeState, useVideoPlayer, version };
+export { AdvancedModeCapture, BasicModeCapture, FullscreenModal, LiveFeedPlayer, LiveFeedViewer, LiveFeedWhep, LiveVideos, LiveVideosWhep, MainVideoPlayer, ProfileEmbedding, ProgressBar, SafeSpaceThemeProvider, StreamInfo, ThumbnailGrid, Tree, TreeNodeComponent, TreeSearch, VideoControls, VideoPlayer, WHEPVideoTile, cn, useSafeSpaceTheme, useStreamLayout, useTreeState, useVideoPlayer, version };
 //# sourceMappingURL=index.js.map

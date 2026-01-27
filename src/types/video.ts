@@ -189,3 +189,95 @@ export interface LiveVideosProps {
   className?: string;
   emptyState?: ReactNode;
 }
+
+/**
+ * Camera stream for WHEP (WebRTC) streaming
+ * Used with LiveVideosWhep component for local intranet streaming
+ */
+export interface WHEPCameraStream {
+  /** Unique identifier for the camera */
+  id: string;
+  /** Display title for the camera */
+  title: string;
+  /** 
+   * Camera identifier used to build the WHEP URL
+   * WHEP URL format: {whepConfig.baseUrl}/{cameraId}/whep
+   */
+  cameraId?: string;
+  /** Optional unique identifier (alternative to cameraId) */
+  uniqueIdentifier?: string;
+  /** Optional guid (alternative to cameraId) */
+  guid?: string;
+  /** Whether the camera is currently live */
+  isLive?: boolean;
+  /** Original data from API (for metadata access) */
+  originalData?: {
+    uniqueIdentifier?: string;
+    guid?: string;
+    key?: string;
+    label?: string;
+    [key: string]: unknown;
+  };
+  /** Camera metadata */
+  metadata?: {
+    resolution?: string;
+    fps?: number;
+    bitrate?: string;
+    location?: string;
+    timestamp?: string;
+    uniqueIdentifier?: string;
+  };
+}
+
+/** Grid layout pattern for LiveVideosWhep component */
+export type GridLayoutPattern = '1x1' | '2x2' | '3x3' | '4x4' | '5x5' | '6x6';
+
+/**
+ * Props for LiveVideosWhep component
+ * Multi-camera WHEP video viewer with grid layouts for local intranet streaming
+ */
+export interface LiveVideosWhepProps {
+  /** Array of camera streams to display */
+  streams: WHEPCameraStream[];
+  /** WHEP configuration - required for WHEP streaming */
+  whepConfig: WHEPConfig;
+  /** Initial/controlled grid layout pattern (default: '2x2') */
+  gridLayout?: GridLayoutPattern;
+  /** Default grid layout when not controlled */
+  defaultGridLayout?: GridLayoutPattern;
+  /** Available layout patterns to show in selector (default: all) */
+  availableLayouts?: GridLayoutPattern[];
+  /** Show loading state */
+  loading?: boolean;
+  /** Component title */
+  title?: ReactNode;
+  /** Called when grid layout changes */
+  onLayoutChange?: (layout: GridLayoutPattern) => void;
+  /** Called when a camera tile is clicked */
+  onTileClick?: (stream: WHEPCameraStream, index: number) => void;
+  /** Called when a stream encounters an error */
+  onStreamError?: (error: Error, stream: WHEPCameraStream) => void;
+  /** Called when camera selection changes */
+  onSelectionChange?: (selectedIds: string[]) => void;
+  /** Show the pattern/layout selector (default: true) */
+  showLayoutSelector?: boolean;
+  /** Show tile labels/names (default: true) */
+  showTileLabels?: boolean;
+  /** Label placement on tiles */
+  tileLabelPlacement?: 'top' | 'bottom';
+  /** Show tile controls (fullscreen, etc.) */
+  showTileControls?: boolean;
+  /** Enable tile selection with checkboxes (default: false) */
+  enableTileSelection?: boolean;
+  /** Enable "Open in Layout" button for selected cameras */
+  enableOpenInLayout?: boolean;
+  /** URL path for layout viewer (default: '/layout-viewer') */
+  layoutViewerPath?: string;
+  /** Height of the component */
+  height?: string | number;
+  /** Additional className */
+  className?: string;
+  /** Custom empty state component */
+  emptyState?: ReactNode;
+}
+
