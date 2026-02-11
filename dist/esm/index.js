@@ -266,44 +266,32 @@ objectFit = 'cover', exposeVideoRef, }) => {
                 onLoadEnd?.();
             }
             else if (Hls.isSupported()) {
-                // Generate a unique session ID for this HLS instance
-                const sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
                 const hls = new Hls({
                     enableWorker: true,
-                    lowLatencyMode: false, // Disable for VOD content to reduce aggressive fetching
+                    // LIVE stream optimized configuration
+                    lowLatencyMode: false, // Set to true when backend supports LL-HLS
                     liveSyncDurationCount: 3,
-                    liveMaxLatencyDurationCount: 10,
-                    liveDurationInfinity: false, // Set to false for VOD/recorded content
-                    backBufferLength: 0, // Don't keep back buffer to avoid re-requesting old segments
+                    liveMaxLatencyDurationCount: 6,
+                    liveDurationInfinity: true, // Required for live streams — keeps stream open
+                    backBufferLength: 30, // Keep 30s back buffer for minor rewinds
                     maxBufferLength: 30,
-                    maxMaxBufferLength: 60, // Further reduced to prevent memory/cache issues
+                    maxMaxBufferLength: 600, // Let HLS.js manage upper bound
                     startLevel: -1,
                     autoStartLoad: true,
                     capLevelToPlayerSize: true,
-                    // Retry configuration - fewer retries with longer delays
+                    // Retry configuration — aligned with HLS.js defaults for stability
                     manifestLoadingMaxRetry: 2,
-                    manifestLoadingRetryDelay: 3000,
+                    manifestLoadingRetryDelay: 1000,
                     manifestLoadingMaxRetryTimeout: 30000,
-                    levelLoadingMaxRetry: 2,
-                    levelLoadingRetryDelay: 3000,
+                    levelLoadingMaxRetry: 4,
+                    levelLoadingRetryDelay: 1000,
                     levelLoadingMaxRetryTimeout: 30000,
-                    fragLoadingMaxRetry: 1, // Minimal retries for fragments - if it fails, likely ORB
-                    fragLoadingRetryDelay: 5000, // Longer delay before retry
+                    fragLoadingMaxRetry: 3, // Allow reasonable retries for transient network issues
+                    fragLoadingRetryDelay: 1000, // Fast recovery for live streams
                     fragLoadingMaxRetryTimeout: 30000,
-                    // XHR setup to bypass ORB by adding cache-busting and proper headers
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    xhrSetup: (xhr, url) => {
+                    // No xhrSetup — let HLS.js and CDN handle caching natively
+                    xhrSetup: (xhr) => {
                         xhr.withCredentials = false;
-                        // Override the open method to add cache-busting parameter
-                        const originalOpen = xhr.open.bind(xhr);
-                        xhr.open = function (method, modUrl, async, user, password) {
-                            // Add cache-busting to .ts and .m4s segment requests
-                            if (modUrl.includes('.ts') || modUrl.includes('.m4s') || modUrl.includes('.m3u8')) {
-                                const separator = modUrl.includes('?') ? '&' : '?';
-                                modUrl = `${modUrl}${separator}_hls_cb=${sessionId}_${Date.now()}`;
-                            }
-                            return originalOpen(method, modUrl, async ?? true, user, password);
-                        };
                     },
                 });
                 hlsRef.current = hls;
