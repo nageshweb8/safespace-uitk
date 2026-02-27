@@ -22,11 +22,25 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const hlsRef = useRef<Hls | null>(null);
   const loopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Stable refs for callbacks — avoids HLS teardown on callback identity changes
+  const onErrorRef = useRef(onError);
+  const onLoadStartRef = useRef(onLoadStart);
+  const onLoadEndRef = useRef(onLoadEnd);
+  const recoveryAttemptsRef = useRef(0);
+  const MAX_RECOVERY_ATTEMPTS = 3;
+
+  // Keep callback refs in sync without triggering HLS re-init
+  useEffect(() => {
+    onErrorRef.current = onError;
+    onLoadStartRef.current = onLoadStart;
+    onLoadEndRef.current = onLoadEnd;
+  });
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !stream.url) return;
 
-    onLoadStart?.();
+    onLoadStartRef.current?.();
     // Cleanup helper (will be populated differently depending on chosen transport)
     let cleanup = () => {
       if (hlsRef.current) {
@@ -62,7 +76,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const ms: MediaStream = ev.streams && ev.streams[0] ? ev.streams[0] : ev.streams[0];
         if (ms) {
           video.srcObject = ms;
-          onLoadEnd?.();
+          onLoadEndRef.current?.();
         }
       };
 
@@ -71,7 +85,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       pc.addEventListener('iceconnectionstatechange', () => {
         const state = pc.iceConnectionState;
         if (state === 'failed' || state === 'disconnected') {
-          onError?.(new Error(`WebRTC connection state: ${state}`));
+          onErrorRef.current?.(new Error(`WebRTC connection state: ${state}`));
         }
       });
 
@@ -132,11 +146,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           }
         } catch (err: unknown) {
           console.error('WebRTC error', err);
-          onError?.(err instanceof Error ? err : new Error(String(err)));
+          onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
           // Fallback: try to use the URL as a normal video src (may work if server provides mjpeg/HLS)
           try {
             video.src = stream.url;
-            onLoadEnd?.();
+            onLoadEndRef.current?.();
           } catch (e) {
             // Ignore - fallback video src assignment can fail safely
           }
@@ -177,7 +191,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
         // Native HLS support (Safari)
         video.src = stream.url;
-        onLoadEnd?.();
+        onLoadEndRef.current?.();
       } else if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
@@ -213,7 +227,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          onLoadEnd?.();
+          onLoadEndRef.current?.();
+        });
+
+        // Reset recovery counter when segments load successfully
+        hls.on(Hls.Events.FRAG_LOADED, () => {
+          recoveryAttemptsRef.current = 0;
         });
 
         hls.on(Hls.Events.ERROR, (event, data) => {
@@ -221,19 +240,22 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                // Check if it's an ORB-related error
-                if (data.details === 'fragLoadError' || data.details === 'levelLoadError') {
-                  console.warn('HLS Network Error (possible ORB) - reinitializing:', data.details);
-                  // Reinitialize HLS after a delay to avoid rapid retries
-                  if (loopTimeoutRef.current) {
-                    clearTimeout(loopTimeoutRef.current);
+                recoveryAttemptsRef.current++;
+                if (recoveryAttemptsRef.current <= MAX_RECOVERY_ATTEMPTS) {
+                  console.warn(
+                    `HLS Network Error - recovery attempt ${recoveryAttemptsRef.current}/${MAX_RECOVERY_ATTEMPTS}:`,
+                    data.details
+                  );
+                  // Seek to live edge before retrying (prevents stale-position stall)
+                  if (video && hls.liveSyncPosition != null) {
+                    video.currentTime = hls.liveSyncPosition;
                   }
-                  loopTimeoutRef.current = setTimeout(() => {
-                    initializeHls();
-                  }, 1000);
-                } else {
-                  console.warn('HLS Network Error - attempting recovery:', data.details);
                   hls.startLoad();
+                } else {
+                  console.error('HLS Network Error - max recovery attempts reached:', data.details);
+                  onErrorRef.current?.(
+                    new Error(`Network Error: ${data.details}`)
+                  );
                 }
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
@@ -242,7 +264,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 break;
               default:
                 console.error('HLS Fatal Error:', data.type, data.details);
-                onError?.(
+                onErrorRef.current?.(
                   new Error(`Fatal Error: ${data.type} - ${data.details}`)
                 );
                 break;
@@ -250,7 +272,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           }
         });
       } else {
-        onError?.(new Error('HLS not supported in this browser'));
+        onErrorRef.current?.(new Error('HLS not supported in this browser'));
       }
     };
 
@@ -284,7 +306,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       }
       cleanup();
     };
-  }, [stream.url, stream, onError, onLoadStart, onLoadEnd, loop]);
+  // Only re-initialize HLS when URL or loop config changes.
+  // Callback changes are handled via refs to avoid HLS teardown.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.url, loop]);
 
   useEffect(() => {
     exposeVideoRef?.(videoRef.current);

@@ -118,11 +118,23 @@ objectFit = 'cover', exposeVideoRef, }) => {
     const videoRef = React.useRef(null);
     const hlsRef = React.useRef(null);
     const loopTimeoutRef = React.useRef(null);
+    // Stable refs for callbacks — avoids HLS teardown on callback identity changes
+    const onErrorRef = React.useRef(onError);
+    const onLoadStartRef = React.useRef(onLoadStart);
+    const onLoadEndRef = React.useRef(onLoadEnd);
+    const recoveryAttemptsRef = React.useRef(0);
+    const MAX_RECOVERY_ATTEMPTS = 3;
+    // Keep callback refs in sync without triggering HLS re-init
+    React.useEffect(() => {
+        onErrorRef.current = onError;
+        onLoadStartRef.current = onLoadStart;
+        onLoadEndRef.current = onLoadEnd;
+    });
     React.useEffect(() => {
         const video = videoRef.current;
         if (!video || !stream.url)
             return;
-        onLoadStart?.();
+        onLoadStartRef.current?.();
         // Cleanup helper (will be populated differently depending on chosen transport)
         let cleanup = () => {
             if (hlsRef.current) {
@@ -154,14 +166,14 @@ objectFit = 'cover', exposeVideoRef, }) => {
                 const ms = ev.streams && ev.streams[0] ? ev.streams[0] : ev.streams[0];
                 if (ms) {
                     video.srcObject = ms;
-                    onLoadEnd?.();
+                    onLoadEndRef.current?.();
                 }
             };
             pc.addEventListener('track', onTrack);
             pc.addEventListener('iceconnectionstatechange', () => {
                 const state = pc.iceConnectionState;
                 if (state === 'failed' || state === 'disconnected') {
-                    onError?.(new Error(`WebRTC connection state: ${state}`));
+                    onErrorRef.current?.(new Error(`WebRTC connection state: ${state}`));
                 }
             });
             // For some servers it's necessary to create a recvonly transceiver to get media
@@ -220,11 +232,11 @@ objectFit = 'cover', exposeVideoRef, }) => {
                 }
                 catch (err) {
                     console.error('WebRTC error', err);
-                    onError?.(err instanceof Error ? err : new Error(String(err)));
+                    onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
                     // Fallback: try to use the URL as a normal video src (may work if server provides mjpeg/HLS)
                     try {
                         video.src = stream.url;
-                        onLoadEnd?.();
+                        onLoadEndRef.current?.();
                     }
                     catch (e) {
                         // Ignore - fallback video src assignment can fail safely
@@ -264,7 +276,7 @@ objectFit = 'cover', exposeVideoRef, }) => {
             if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 // Native HLS support (Safari)
                 video.src = stream.url;
-                onLoadEnd?.();
+                onLoadEndRef.current?.();
             }
             else if (Hls.isSupported()) {
                 const hls = new Hls({
@@ -299,27 +311,29 @@ objectFit = 'cover', exposeVideoRef, }) => {
                 hls.loadSource(stream.url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    onLoadEnd?.();
+                    onLoadEndRef.current?.();
+                });
+                // Reset recovery counter when segments load successfully
+                hls.on(Hls.Events.FRAG_LOADED, () => {
+                    recoveryAttemptsRef.current = 0;
                 });
                 hls.on(Hls.Events.ERROR, (event, data) => {
                     console.error('HLS Error:', data);
                     if (data.fatal) {
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
-                                // Check if it's an ORB-related error
-                                if (data.details === 'fragLoadError' || data.details === 'levelLoadError') {
-                                    console.warn('HLS Network Error (possible ORB) - reinitializing:', data.details);
-                                    // Reinitialize HLS after a delay to avoid rapid retries
-                                    if (loopTimeoutRef.current) {
-                                        clearTimeout(loopTimeoutRef.current);
+                                recoveryAttemptsRef.current++;
+                                if (recoveryAttemptsRef.current <= MAX_RECOVERY_ATTEMPTS) {
+                                    console.warn(`HLS Network Error - recovery attempt ${recoveryAttemptsRef.current}/${MAX_RECOVERY_ATTEMPTS}:`, data.details);
+                                    // Seek to live edge before retrying (prevents stale-position stall)
+                                    if (video && hls.liveSyncPosition != null) {
+                                        video.currentTime = hls.liveSyncPosition;
                                     }
-                                    loopTimeoutRef.current = setTimeout(() => {
-                                        initializeHls();
-                                    }, 1000);
+                                    hls.startLoad();
                                 }
                                 else {
-                                    console.warn('HLS Network Error - attempting recovery:', data.details);
-                                    hls.startLoad();
+                                    console.error('HLS Network Error - max recovery attempts reached:', data.details);
+                                    onErrorRef.current?.(new Error(`Network Error: ${data.details}`));
                                 }
                                 break;
                             case Hls.ErrorTypes.MEDIA_ERROR:
@@ -328,14 +342,14 @@ objectFit = 'cover', exposeVideoRef, }) => {
                                 break;
                             default:
                                 console.error('HLS Fatal Error:', data.type, data.details);
-                                onError?.(new Error(`Fatal Error: ${data.type} - ${data.details}`));
+                                onErrorRef.current?.(new Error(`Fatal Error: ${data.type} - ${data.details}`));
                                 break;
                         }
                     }
                 });
             }
             else {
-                onError?.(new Error('HLS not supported in this browser'));
+                onErrorRef.current?.(new Error('HLS not supported in this browser'));
             }
         };
         // Initialize HLS
@@ -365,7 +379,10 @@ objectFit = 'cover', exposeVideoRef, }) => {
             }
             cleanup();
         };
-    }, [stream.url, stream, onError, onLoadStart, onLoadEnd, loop]);
+        // Only re-initialize HLS when URL or loop config changes.
+        // Callback changes are handled via refs to avoid HLS teardown.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [stream.url, loop]);
     React.useEffect(() => {
         exposeVideoRef?.(videoRef.current);
         return () => {
@@ -435,7 +452,7 @@ const ProgressBar = ({ progress, className, size = 'medium', color = 'white', })
 };
 
 const MainVideoPlayer = ({ stream, isPlaying, isMuted, error, showControls, streamCount, onPlayPause, onMuteUnmute, onFullscreen, onRetry, onError, className, }) => {
-    return (jsxRuntime.jsx("div", { className: cn('relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black', className), style: { aspectRatio: '16/9' }, children: error ? (jsxRuntime.jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsxRuntime.jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: error }), jsxRuntime.jsx(antd.Button, { type: "primary", icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), onClick: onRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: isMuted, controls: false, onError: onError }, `${stream.id}-${Date.now()}`), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onPlayPause, onMuteUnmute: onMuteUnmute, onFullscreen: onFullscreen, showControls: showControls && streamCount > 2, size: "medium" }), streamCount > 2 && (jsxRuntime.jsx(ProgressBar, { progress: 65, size: "medium", color: "white", className: "px-3 pb-2" }))] })) }));
+    return (jsxRuntime.jsx("div", { className: cn('relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black', className), style: { aspectRatio: '16/9' }, children: error ? (jsxRuntime.jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsxRuntime.jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: error }), jsxRuntime.jsx(antd.Button, { type: "primary", icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), onClick: onRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: isMuted, controls: false, onError: onError }, stream.id), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onPlayPause, onMuteUnmute: onMuteUnmute, onFullscreen: onFullscreen, showControls: showControls && streamCount > 2, size: "medium" }), streamCount > 2 && (jsxRuntime.jsx(ProgressBar, { progress: 65, size: "medium", color: "white", className: "px-3 pb-2" }))] })) }));
 };
 
 const { Text: Text$3 } = antd.Typography;
