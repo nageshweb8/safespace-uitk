@@ -17,6 +17,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   objectFit = 'cover',
   exposeVideoRef,
+  isPlaying,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -192,6 +193,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         // Native HLS support (Safari)
         video.src = stream.url;
         onLoadEndRef.current?.();
+        if (autoPlay) {
+          video.play().catch(() => {/* autoplay may be blocked */});
+        }
       } else if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
@@ -228,6 +232,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           onLoadEndRef.current?.();
+          if (autoPlay) {
+            video.play().catch(() => {/* autoplay may be blocked */});
+          }
         });
 
         // Reset recovery counter when segments load successfully
@@ -310,6 +317,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Callback changes are handled via refs to avoid HLS teardown.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.url, loop]);
+
+  // Sync external isPlaying prop to actual video element
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || isPlaying === undefined) return;
+    if (isPlaying) {
+      video.play().catch(() => {/* play may be blocked */});
+    } else {
+      video.pause();
+    }
+  }, [isPlaying]);
 
   useEffect(() => {
     exposeVideoRef?.(videoRef.current);

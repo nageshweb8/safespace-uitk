@@ -69,6 +69,7 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
             muted={isMuted}
             controls={false}
             onError={onError}
+            isPlaying={isPlaying}
           />
 
           <StreamInfo stream={stream} showLiveIndicator={true} />

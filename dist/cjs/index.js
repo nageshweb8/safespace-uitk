@@ -114,7 +114,7 @@ function cn(...inputs) {
 
 const VideoPlayer = ({ stream, autoPlay = true, muted = true, controls = false, loop = false, className, onError, onLoadStart, onLoadEnd, showOverlay = false, 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-objectFit = 'cover', exposeVideoRef, }) => {
+objectFit = 'cover', exposeVideoRef, isPlaying, }) => {
     const videoRef = React.useRef(null);
     const hlsRef = React.useRef(null);
     const loopTimeoutRef = React.useRef(null);
@@ -277,6 +277,9 @@ objectFit = 'cover', exposeVideoRef, }) => {
                 // Native HLS support (Safari)
                 video.src = stream.url;
                 onLoadEndRef.current?.();
+                if (autoPlay) {
+                    video.play().catch(() => { });
+                }
             }
             else if (Hls.isSupported()) {
                 const hls = new Hls({
@@ -312,6 +315,9 @@ objectFit = 'cover', exposeVideoRef, }) => {
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     onLoadEndRef.current?.();
+                    if (autoPlay) {
+                        video.play().catch(() => { });
+                    }
                 });
                 // Reset recovery counter when segments load successfully
                 hls.on(Hls.Events.FRAG_LOADED, () => {
@@ -383,6 +389,18 @@ objectFit = 'cover', exposeVideoRef, }) => {
         // Callback changes are handled via refs to avoid HLS teardown.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [stream.url, loop]);
+    // Sync external isPlaying prop to actual video element
+    React.useEffect(() => {
+        const video = videoRef.current;
+        if (!video || isPlaying === undefined)
+            return;
+        if (isPlaying) {
+            video.play().catch(() => { });
+        }
+        else {
+            video.pause();
+        }
+    }, [isPlaying]);
     React.useEffect(() => {
         exposeVideoRef?.(videoRef.current);
         return () => {
@@ -452,7 +470,7 @@ const ProgressBar = ({ progress, className, size = 'medium', color = 'white', })
 };
 
 const MainVideoPlayer = ({ stream, isPlaying, isMuted, error, showControls, streamCount, onPlayPause, onMuteUnmute, onFullscreen, onRetry, onError, className, }) => {
-    return (jsxRuntime.jsx("div", { className: cn('relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black', className), style: { aspectRatio: '16/9' }, children: error ? (jsxRuntime.jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsxRuntime.jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: error }), jsxRuntime.jsx(antd.Button, { type: "primary", icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), onClick: onRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: isMuted, controls: false, onError: onError }, stream.id), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onPlayPause, onMuteUnmute: onMuteUnmute, onFullscreen: onFullscreen, showControls: showControls && streamCount > 2, size: "medium" }), streamCount > 2 && (jsxRuntime.jsx(ProgressBar, { progress: 65, size: "medium", color: "white", className: "px-3 pb-2" }))] })) }));
+    return (jsxRuntime.jsx("div", { className: cn('relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black', className), style: { aspectRatio: '16/9' }, children: error ? (jsxRuntime.jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsxRuntime.jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: error }), jsxRuntime.jsx(antd.Button, { type: "primary", icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), onClick: onRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: isMuted, controls: false, onError: onError, isPlaying: isPlaying }, stream.id), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onPlayPause, onMuteUnmute: onMuteUnmute, onFullscreen: onFullscreen, showControls: showControls && streamCount > 2, size: "medium" }), streamCount > 2 && (jsxRuntime.jsx(ProgressBar, { progress: 65, size: "medium", color: "white", className: "px-3 pb-2" }))] })) }));
 };
 
 const { Text: Text$3 } = antd.Typography;

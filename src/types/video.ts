@@ -62,6 +62,9 @@ export interface VideoPlayerProps {
   showOverlay?: boolean;
   objectFit?: 'cover' | 'contain' | 'fill' | 'none';
   exposeVideoRef?: (video: HTMLVideoElement | null) => void;
+  /** Externally controlled play/pause state. When provided, the component
+   *  will call video.play() / video.pause() reactively. */
+  isPlaying?: boolean;
 }
 
 export interface StreamLayoutConfig {
