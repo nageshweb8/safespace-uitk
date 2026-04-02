@@ -106,16 +106,6 @@ export const ThumbnailGrid: React.FC<ThumbnailGridProps> = ({
 
           <StreamInfo stream={inactiveStream} showLiveIndicator={true} />
 
-          <VideoControls
-            isPlaying={false}
-            isMuted={true}
-            onPlayPause={() => {}}
-            onMuteUnmute={() => {}}
-            onFullscreen={onFullscreen}
-            showControls={true}
-            size="small"
-          />
-
           <ProgressBar
             progress={45 + inactiveIndex * 10}
             size="small"
