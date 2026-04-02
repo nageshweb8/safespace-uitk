@@ -80,19 +80,17 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
             onPlayPause={onPlayPause}
             onMuteUnmute={onMuteUnmute}
             onFullscreen={onFullscreen}
-            showControls={showControls && streamCount > 2}
+            showControls={showControls}
             size="medium"
           />
 
-          {/* Progress bar for main video (only when more than 2 videos) */}
-          {streamCount > 2 && (
-            <ProgressBar
-              progress={65}
-              size="medium"
-              color="white"
-              className="px-3 pb-2"
-            />
-          )}
+          {/* Progress bar for main video */}
+          <ProgressBar
+            progress={65}
+            size="medium"
+            color="white"
+            className="px-3 pb-2"
+          />
         </>
       )}
     </div>
