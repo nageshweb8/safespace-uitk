@@ -29,7 +29,6 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
   isMuted,
   error,
   showControls,
-  streamCount,
   onPlayPause,
   onMuteUnmute,
   onFullscreen,
@@ -37,6 +36,8 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
   onError,
   className,
 }) => {
+  const hasVideo = !!stream?.url;
+
   return (
     <div
       className={cn(
@@ -59,6 +60,10 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
               Retry Connection
             </Button>
           </div>
+        </div>
+      ) : !hasVideo ? (
+        <div className="flex items-center justify-center w-full h-full bg-black text-xs text-gray-300">
+          No Video
         </div>
       ) : (
         <>

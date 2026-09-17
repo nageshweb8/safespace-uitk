@@ -8,6 +8,12 @@ import { ProgressBar } from '../shared/ProgressBar';
 
 const { Text } = Typography;
 
+const renderNoVideoPlaceholder = () => (
+  <div className="flex items-center justify-center w-full h-full bg-black text-xs text-gray-300">
+    No Video
+  </div>
+);
+
 // Memoized thumbnail item to prevent re-renders when other thumbnails change
 interface ThumbnailItemProps {
   stream: CameraStream;
@@ -25,42 +31,50 @@ const ThumbnailItem = React.memo<ThumbnailItemProps>(({
   onFullscreen,
   showControls = false,
 }) => {
+  const hasVideo = !!stream?.url;
+
   return (
     <div
       className="relative overflow-hidden rounded-md bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all flex-1 min-h-0"
       onClick={() => onStreamSelect(index)}
     >
-      <VideoPlayer
-        stream={stream}
-        autoPlay={true}
-        muted={true}
-        controls={false}
-        showOverlay={true}
-        className="hover:scale-105 transition-transform"
-      />
+      {hasVideo ? (
+        <>
+          <VideoPlayer
+            stream={stream}
+            autoPlay={true}
+            muted={true}
+            controls={false}
+            showOverlay={true}
+            className="hover:scale-105 transition-transform"
+          />
 
-      <StreamInfo
-        stream={stream}
-        showLiveIndicator={true}
-        className="text-[10px] px-1 py-0.5"
-      />
+          <StreamInfo
+            stream={stream}
+            showLiveIndicator={true}
+            className="text-[10px] px-1 py-0.5"
+          />
 
-      <VideoControls
-        isPlaying={false}
-        isMuted={true}
-        onPlayPause={() => {}}
-        onMuteUnmute={() => {}}
-        onFullscreen={onFullscreen || (() => {})}
-        showControls={showControls}
-        size="small"
-      />
+          <VideoControls
+            isPlaying={false}
+            isMuted={true}
+            onPlayPause={() => {}}
+            onMuteUnmute={() => {}}
+            onFullscreen={onFullscreen || (() => {})}
+            showControls={showControls}
+            size="small"
+          />
 
-      <ProgressBar
-        progress={30 + index * 10}
-        size="small"
-        color="white"
-        className="px-1 pb-0.5"
-      />
+          <ProgressBar
+            progress={30 + index * 10}
+            size="small"
+            color="white"
+            className="px-1 pb-0.5"
+          />
+        </>
+      ) : (
+        renderNoVideoPlaceholder()
+      )}
     </div>
   );
 }, (prevProps, nextProps) => {
@@ -88,6 +102,7 @@ export const ThumbnailGrid: React.FC<ThumbnailGridProps> = ({
     // 50:50 layout for 2 videos
     const inactiveStream = streams[activeStreamIndex === 0 ? 1 : 0];
     const inactiveIndex = activeStreamIndex === 0 ? 1 : 0;
+    const hasVideo = !!inactiveStream?.url;
 
     return (
       <div className="w-full h-full">
@@ -95,22 +110,28 @@ export const ThumbnailGrid: React.FC<ThumbnailGridProps> = ({
           className="relative w-full h-full overflow-hidden rounded-lg bg-black cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
           onClick={() => onStreamSelect(inactiveIndex)}
         >
-          <VideoPlayer
-            stream={inactiveStream}
-            autoPlay={true}
-            muted={true}
-            controls={false}
-            showOverlay={true}
-            className="hover:scale-105 transition-transform"
-          />
+          {hasVideo ? (
+            <>
+              <VideoPlayer
+                stream={inactiveStream}
+                autoPlay={true}
+                muted={true}
+                controls={false}
+                showOverlay={true}
+                className="hover:scale-105 transition-transform"
+              />
 
-          <StreamInfo stream={inactiveStream} showLiveIndicator={true} />
+              <StreamInfo stream={inactiveStream} showLiveIndicator={true} />
 
-          <ProgressBar
-            progress={45 + inactiveIndex * 10}
-            size="small"
-            color="white"
-          />
+              <ProgressBar
+                progress={45 + inactiveIndex * 10}
+                size="small"
+                color="white"
+              />
+            </>
+          ) : (
+            renderNoVideoPlaceholder()
+          )}
         </div>
       </div>
     );
