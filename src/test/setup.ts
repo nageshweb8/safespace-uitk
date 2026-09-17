@@ -2,19 +2,38 @@ import '@testing-library/jest-dom';
 
 // Mock HLS.js for tests
 jest.mock('hls.js', () => {
-  return {
-    __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
+  const MockHls = Object.assign(
+    jest.fn().mockImplementation(() => ({
       loadSource: jest.fn(),
       attachMedia: jest.fn(),
       on: jest.fn(),
       destroy: jest.fn(),
+      startLoad: jest.fn(),
+      recoverMediaError: jest.fn(),
+      liveSyncPosition: null,
     })),
-    isSupported: jest.fn(() => true),
-    Events: {
-      ERROR: 'hlsError',
-    },
-  };
+    {
+      isSupported: jest.fn(() => true),
+      Events: {
+        ERROR: 'hlsError',
+        MANIFEST_PARSED: 'hlsManifestParsed',
+        FRAG_LOADED: 'hlsFragLoaded',
+      },
+      ErrorTypes: { NETWORK_ERROR: 'networkError', MEDIA_ERROR: 'mediaError' },
+      ErrorDetails: {
+        MANIFEST_LOAD_ERROR: 'manifestLoadError',
+        MANIFEST_LOAD_TIMEOUT: 'manifestLoadTimeOut',
+      },
+    }
+  );
+  return { __esModule: true, default: MockHls };
+});
+
+// jsdom does not implement media playback or resource loading.
+Object.defineProperties(HTMLMediaElement.prototype, {
+  play: { configurable: true, value: jest.fn().mockResolvedValue(undefined) },
+  pause: { configurable: true, value: jest.fn() },
+  load: { configurable: true, value: jest.fn() },
 });
 
 // Mock matchMedia for Ant Design components

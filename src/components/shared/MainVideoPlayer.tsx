@@ -29,7 +29,6 @@ export const MainVideoPlayer: React.FC<MainVideoPlayerProps> = ({
   isMuted,
   error,
   showControls,
-  streamCount,
   onPlayPause,
   onMuteUnmute,
   onFullscreen,

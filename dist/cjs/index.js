@@ -122,13 +122,14 @@ objectFit = 'cover', exposeVideoRef, isPlaying, }) => {
     const onErrorRef = React.useRef(onError);
     const onLoadStartRef = React.useRef(onLoadStart);
     const onLoadEndRef = React.useRef(onLoadEnd);
-    const recoveryAttemptsRef = React.useRef(0);
+    const playbackRef = React.useRef({ autoPlay, isPlaying });
     const MAX_RECOVERY_ATTEMPTS = 3;
     // Keep callback refs in sync without triggering HLS re-init
     React.useEffect(() => {
         onErrorRef.current = onError;
         onLoadStartRef.current = onLoadStart;
         onLoadEndRef.current = onLoadEnd;
+        playbackRef.current = { autoPlay, isPlaying };
     });
     React.useEffect(() => {
         const video = videoRef.current;
@@ -265,37 +266,46 @@ objectFit = 'cover', exposeVideoRef, isPlaying, }) => {
             };
             return cleanup;
         }
-        // HLS flow (unchanged)
+        // HLS lifecycle is independent of the WebRTC signaling path above.
         cleanup();
+        let disposed = false;
+        let recoveryTimer = null;
+        const clearRecoveryTimer = () => {
+            if (recoveryTimer !== null) {
+                clearTimeout(recoveryTimer);
+                recoveryTimer = null;
+            }
+        };
+        const playIfRequested = () => {
+            const playback = playbackRef.current;
+            if (!disposed && (playback.isPlaying ?? playback.autoPlay)) {
+                video.play().catch(() => { });
+            }
+        };
         // Helper function to initialize/reinitialize HLS
         const initializeHls = () => {
+            clearRecoveryTimer();
             if (hlsRef.current) {
                 hlsRef.current.destroy();
                 hlsRef.current = null;
             }
-            if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                // Native HLS support (Safari)
-                video.src = stream.url;
-                onLoadEndRef.current?.();
-                if (autoPlay) {
-                    video.play().catch(() => { });
-                }
-            }
-            else if (Hls.isSupported()) {
+            // Prefer HLS.js even when the browser also advertises native HLS.
+            if (Hls.isSupported()) {
+                let recoveryAttempts = 0;
                 const hls = new Hls({
                     enableWorker: true,
                     // LIVE stream optimized configuration
                     lowLatencyMode: false, // Set to true when backend supports LL-HLS
                     liveSyncDurationCount: 3,
                     liveMaxLatencyDurationCount: 6,
-                    liveDurationInfinity: true, // Required for live streams — keeps stream open
+                    liveDurationInfinity: true, // Expose an infinite duration for live playlists
                     backBufferLength: 30, // Keep 30s back buffer for minor rewinds
                     maxBufferLength: 30,
                     maxMaxBufferLength: 600, // Let HLS.js manage upper bound
                     startLevel: -1,
                     autoStartLoad: true,
                     capLevelToPlayerSize: true,
-                    // Retry configuration — aligned with HLS.js defaults for stability
+                    // Preserve the existing request retry policy for consumers.
                     manifestLoadingMaxRetry: 2,
                     manifestLoadingRetryDelay: 1000,
                     manifestLoadingMaxRetryTimeout: 30000,
@@ -311,31 +321,53 @@ objectFit = 'cover', exposeVideoRef, isPlaying, }) => {
                     },
                 });
                 hlsRef.current = hls;
-                hls.loadSource(stream.url);
-                hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    if (disposed || hlsRef.current !== hls)
+                        return;
                     onLoadEndRef.current?.();
-                    if (autoPlay) {
-                        video.play().catch(() => { });
-                    }
+                    playIfRequested();
                 });
                 // Reset recovery counter when segments load successfully
                 hls.on(Hls.Events.FRAG_LOADED, () => {
-                    recoveryAttemptsRef.current = 0;
+                    if (disposed || hlsRef.current !== hls)
+                        return;
+                    recoveryAttempts = 0;
                 });
-                hls.on(Hls.Events.ERROR, (event, data) => {
-                    console.error('HLS Error:', data);
+                hls.on(Hls.Events.ERROR, (_event, data) => {
+                    if (disposed || hlsRef.current !== hls)
+                        return;
                     if (data.fatal) {
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
-                                recoveryAttemptsRef.current++;
-                                if (recoveryAttemptsRef.current <= MAX_RECOVERY_ATTEMPTS) {
-                                    console.warn(`HLS Network Error - recovery attempt ${recoveryAttemptsRef.current}/${MAX_RECOVERY_ATTEMPTS}:`, data.details);
-                                    // Seek to live edge before retrying (prevents stale-position stall)
-                                    if (video && hls.liveSyncPosition != null) {
-                                        video.currentTime = hls.liveSyncPosition;
-                                    }
-                                    hls.startLoad();
+                                if (recoveryTimer !== null)
+                                    return;
+                                recoveryAttempts++;
+                                if (recoveryAttempts <= MAX_RECOVERY_ATTEMPTS) {
+                                    // Allow the origin to recover; never retry synchronously in
+                                    // the error dispatch or share retry state between cameras.
+                                    recoveryTimer = setTimeout(() => {
+                                        recoveryTimer = null;
+                                        if (disposed || hlsRef.current !== hls)
+                                            return;
+                                        if (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
+                                            data.details === Hls.ErrorDetails.MANIFEST_LOAD_TIMEOUT) {
+                                            // startLoad alone cannot retry an unloaded manifest.
+                                            hls.loadSource(stream.url);
+                                        }
+                                        else {
+                                            const livePosition = hls.liveSyncPosition;
+                                            if (!video.paused && livePosition != null && Number.isFinite(livePosition)) {
+                                                // A failed seek must not prevent the loading retry.
+                                                try {
+                                                    video.currentTime = livePosition;
+                                                }
+                                                catch {
+                                                    // The next playlist update may supply a seekable range.
+                                                }
+                                            }
+                                            hls.startLoad();
+                                        }
+                                    }, 1000 * 2 ** (recoveryAttempts - 1));
                                 }
                                 else {
                                     console.error('HLS Network Error - max recovery attempts reached:', data.details);
@@ -343,16 +375,26 @@ objectFit = 'cover', exposeVideoRef, isPlaying, }) => {
                                 }
                                 break;
                             case Hls.ErrorTypes.MEDIA_ERROR:
+                                clearRecoveryTimer();
                                 console.warn('HLS Media Error - attempting recovery:', data.details);
                                 hls.recoverMediaError();
                                 break;
                             default:
+                                clearRecoveryTimer();
                                 console.error('HLS Fatal Error:', data.type, data.details);
                                 onErrorRef.current?.(new Error(`Fatal Error: ${data.type} - ${data.details}`));
                                 break;
                         }
                     }
                 });
+                hls.loadSource(stream.url);
+                hls.attachMedia(video);
+            }
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS is a capability fallback, not a runtime error fallback.
+                video.src = stream.url;
+                onLoadEndRef.current?.();
+                playIfRequested();
             }
             else {
                 onErrorRef.current?.(new Error('HLS not supported in this browser'));
@@ -370,20 +412,23 @@ objectFit = 'cover', exposeVideoRef, isPlaying, }) => {
                 }
                 loopTimeoutRef.current = setTimeout(() => {
                     initializeHls();
-                    if (videoRef.current) {
-                        videoRef.current.play().catch(() => { });
-                    }
+                    playIfRequested();
                 }, 100);
             }
         };
         video.addEventListener('ended', handleEnded);
         return () => {
+            disposed = true;
+            clearRecoveryTimer();
             video.removeEventListener('ended', handleEnded);
             if (loopTimeoutRef.current) {
                 clearTimeout(loopTimeoutRef.current);
                 loopTimeoutRef.current = null;
             }
             cleanup();
+            video.pause();
+            video.removeAttribute('src');
+            video.load();
         };
         // Only re-initialize HLS when URL or loop config changes.
         // Callback changes are handled via refs to avoid HLS teardown.
@@ -416,7 +461,7 @@ objectFit = 'cover', exposeVideoRef, isPlaying, }) => {
     const handleVideoLoadedData = () => {
         onLoadEnd?.();
     };
-    return (jsxRuntime.jsxs("div", { className: cn('relative w-full h-full', className), children: [jsxRuntime.jsx("video", { ref: videoRef, autoPlay: autoPlay, muted: muted, controls: controls, playsInline: true, className: cn('w-full h-full object-fill'
+    return (jsxRuntime.jsxs("div", { className: cn('relative w-full h-full', className), children: [jsxRuntime.jsx("video", { ref: videoRef, autoPlay: autoPlay && isPlaying !== false, muted: muted, controls: controls, playsInline: true, className: cn('w-full h-full object-fill'
                 // objectFit === 'contain' && 'object-contain bg-black',
                 // objectFit === 'fill' && 'object-fill',
                 // objectFit === 'none' && 'object-none',
@@ -469,7 +514,7 @@ const ProgressBar = ({ progress, className, size = 'medium', color = 'white', })
     return (jsxRuntime.jsx("div", { className: cn('absolute bottom-0 left-0 right-0 px-2 pb-1', className), children: jsxRuntime.jsx("div", { className: cn('w-full rounded', sizeClasses[size], backgroundClasses[color]), children: jsxRuntime.jsx("div", { className: cn('h-full rounded transition-all duration-300', colorClasses[color]), style: { width: `${Math.min(Math.max(progress, 0), 100)}%` } }) }) }));
 };
 
-const MainVideoPlayer = ({ stream, isPlaying, isMuted, error, showControls, streamCount, onPlayPause, onMuteUnmute, onFullscreen, onRetry, onError, className, }) => {
+const MainVideoPlayer = ({ stream, isPlaying, isMuted, error, showControls, onPlayPause, onMuteUnmute, onFullscreen, onRetry, onError, className, }) => {
     return (jsxRuntime.jsx("div", { className: cn('relative w-full h-full min-h-[400px] overflow-hidden rounded-lg bg-black', className), style: { aspectRatio: '16/9' }, children: error ? (jsxRuntime.jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-white", children: jsxRuntime.jsxs("div", { className: "text-center", children: [jsxRuntime.jsx("div", { className: "text-lg mb-2", children: "\u26A0\uFE0F" }), jsxRuntime.jsx("div", { className: "text-white mb-4 max-w-xs text-center", children: error }), jsxRuntime.jsx(antd.Button, { type: "primary", icon: jsxRuntime.jsx(icons.ReloadOutlined, {}), onClick: onRetry, className: "bg-blue-600 hover:bg-blue-700", children: "Retry Connection" })] }) })) : (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: isMuted, controls: false, onError: onError, isPlaying: isPlaying }, stream.id), jsxRuntime.jsx(StreamInfo, { stream: stream, showLiveIndicator: true }), jsxRuntime.jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: onPlayPause, onMuteUnmute: onMuteUnmute, onFullscreen: onFullscreen, showControls: showControls, size: "medium" }), jsxRuntime.jsx(ProgressBar, { progress: 65, size: "medium", color: "white", className: "px-3 pb-2" })] })) }));
 };
 
@@ -504,7 +549,7 @@ const ThumbnailGrid = ({ streams, activeStreamIndex, onStreamSelect, onFullscree
 };
 
 const FullscreenModal = ({ isOpen, stream, isPlaying, isMuted, onClose, onError, }) => {
-    return (jsxRuntime.jsx(antd.Modal, { open: isOpen, onCancel: onClose, footer: null, width: "90vw", centered: true, closable: false, bodyStyle: { padding: 0, height: '90vh' }, className: "fullscreen-modal", destroyOnClose: true, children: jsxRuntime.jsxs("div", { className: "relative h-full bg-black", children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: isMuted, controls: true, className: "h-full", onError: onError }, `modal-${stream.id}`), jsxRuntime.jsx(antd.Button, { type: "text", size: "large", icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}), onClick: onClose, className: "absolute top-4 right-4 text-white hover:text-gray-300 z-10", title: "Close Fullscreen" }), jsxRuntime.jsxs("div", { className: "absolute top-4 left-4 bg-black/70 text-white px-4 py-2 rounded", children: [jsxRuntime.jsx("div", { className: "text-lg font-medium", children: stream.title }), stream.metadata?.resolution && stream.metadata?.fps && (jsxRuntime.jsxs("div", { className: "text-sm opacity-75", children: [stream.metadata.resolution, " \u2022 ", stream.metadata.fps, "fps", stream.metadata.bitrate && ` • ${stream.metadata.bitrate}`] }))] })] }) }));
+    return (jsxRuntime.jsx(antd.Modal, { open: isOpen, onCancel: onClose, footer: null, width: "90vw", centered: true, closable: false, bodyStyle: { padding: 0, height: '90vh' }, className: "fullscreen-modal", destroyOnClose: true, children: jsxRuntime.jsxs("div", { className: "relative h-full bg-black", children: [jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: isPlaying, muted: isMuted, controls: true, className: "h-full", onError: onError }, `modal-${stream.id}`), jsxRuntime.jsx(antd.Button, { type: "text", size: "large", icon: jsxRuntime.jsx(icons.ShrinkOutlined, {}), onClick: onClose, className: "absolute top-4 right-4 text-white hover:text-gray-300 z-10", title: "Close Fullscreen" }), jsxRuntime.jsxs("div", { className: "absolute top-4 left-4 bg-black/70 text-white px-4 py-2 rounded", children: [jsxRuntime.jsx("div", { className: "text-lg font-medium", children: stream.title }), stream.metadata?.resolution && stream.metadata?.fps && (jsxRuntime.jsxs("div", { className: "text-sm opacity-75", children: [stream.metadata.resolution, " \u2022 ", stream.metadata.fps, "fps", stream.metadata.bitrate && ` • ${stream.metadata.bitrate}`] }))] })] }) }));
 };
 
 const { Text: Text$2 } = antd.Typography;
@@ -1936,36 +1981,8 @@ const Tree = ({ data, title, titleIcon, searchable = true, searchPlaceholder = '
 };
 
 const LiveVideoTileInner = ({ stream, index, isPrimary = false, isPlaying, isMuted, showControls, controlsSize, showLabel, labelPlacement = 'top', onTogglePlay, onToggleMute, onFullscreen, onClick, onError, className, style, }) => {
-    const videoElementRef = React.useRef(null);
     const hasStream = !!stream && !!stream.url;
     const streamId = stream?.id ?? '';
-    React.useEffect(() => {
-        const video = videoElementRef.current;
-        if (!video)
-            return;
-        if (isMuted !== video.muted) {
-            video.muted = isMuted;
-        }
-    }, [isMuted]);
-    React.useEffect(() => {
-        const video = videoElementRef.current;
-        if (!video)
-            return;
-        if (isPlaying) {
-            const playPromise = video.play();
-            if (playPromise && typeof playPromise.catch === 'function') {
-                playPromise.catch(() => {
-                    /* ignore */
-                });
-            }
-        }
-        else {
-            video.pause();
-        }
-    }, [isPlaying]);
-    const handleExposeVideoRef = React.useCallback((video) => {
-        videoElementRef.current = video;
-    }, []);
     const handleTogglePlay = React.useCallback(() => {
         if (streamId)
             onTogglePlay(streamId);
@@ -1987,7 +2004,7 @@ const LiveVideoTileInner = ({ stream, index, isPrimary = false, isPlaying, isMut
             onError(error, streamId);
         }
     }, [onError, streamId]);
-    return (jsxRuntime.jsxs("div", { className: cn('relative overflow-hidden bg-black rounded-md isolate', isPrimary ? 'shadow-[0_0_0_2px_rgba(67,228,255,0.35)]' : '', className), style: style, onClick: handleClick, children: [hasStream ? (jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, muted: isMuted, controls: false, objectFit: "cover", exposeVideoRef: handleExposeVideoRef, onError: handleError }, stream?.id ?? index)) : (jsxRuntime.jsx("div", { className: "flex items-center justify-center w-full h-full bg-black text-xs text-gray-300", children: "No Video" })), showLabel && (jsxRuntime.jsx("div", { className: cn('pointer-events-none absolute left-0 right-0 flex items-center justify-between px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-[1px]', labelPlacement === 'bottom'
+    return (jsxRuntime.jsxs("div", { className: cn('relative overflow-hidden bg-black rounded-md isolate', isPrimary ? 'shadow-[0_0_0_2px_rgba(67,228,255,0.35)]' : '', className), style: style, onClick: handleClick, children: [hasStream ? (jsxRuntime.jsx(VideoPlayer, { stream: stream, autoPlay: true, isPlaying: isPlaying, muted: isMuted, controls: false, objectFit: "cover", onError: handleError }, stream?.id ?? index)) : (jsxRuntime.jsx("div", { className: "flex items-center justify-center w-full h-full bg-black text-xs text-gray-300", children: "No Video" })), showLabel && (jsxRuntime.jsx("div", { className: cn('pointer-events-none absolute left-0 right-0 flex items-center justify-between px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-[1px]', labelPlacement === 'bottom'
                     ? 'bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent'
                     : 'top-0 bg-gradient-to-b from-black/75 via-black/40 to-transparent'), children: jsxRuntime.jsx("span", { children: stream?.title || `Camera ${index + 1}` }) })), showControls && hasStream && (jsxRuntime.jsx(VideoControls, { isPlaying: isPlaying, isMuted: isMuted, onPlayPause: handleTogglePlay, onMuteUnmute: handleToggleMute, onFullscreen: handleFullscreen, showControls: true, size: controlsSize }))] }));
 };

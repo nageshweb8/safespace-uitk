@@ -37,7 +37,7 @@ export const FullscreenModal: React.FC<FullscreenModalProps> = ({
         <VideoPlayer
           key={`modal-${stream.id}`}
           stream={stream}
-          autoPlay={true}
+          autoPlay={isPlaying}
           muted={isMuted}
           controls={true}
           className="h-full"

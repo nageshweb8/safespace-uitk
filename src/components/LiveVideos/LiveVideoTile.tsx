@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef, useCallback } from 'react';
+import React, { memo, useCallback } from 'react';
 import { CameraStream } from '../../types/video';
 import { VideoPlayer } from '../VideoPlayer';
 import { VideoControls } from '../shared/VideoControls';
@@ -41,37 +41,8 @@ const LiveVideoTileInner: React.FC<LiveVideoTileProps> = ({
   className,
   style,
 }) => {
-  const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const hasStream = !!stream && !!stream.url;
   const streamId = stream?.id ?? '';
-
-  useEffect(() => {
-    const video = videoElementRef.current;
-    if (!video) return;
-    if (isMuted !== video.muted) {
-      video.muted = isMuted;
-    }
-  }, [isMuted]);
-
-  useEffect(() => {
-    const video = videoElementRef.current;
-    if (!video) return;
-
-    if (isPlaying) {
-      const playPromise = video.play();
-      if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch(() => {
-          /* ignore */
-        });
-      }
-    } else {
-      video.pause();
-    }
-  }, [isPlaying]);
-
-  const handleExposeVideoRef = useCallback((video: HTMLVideoElement | null) => {
-    videoElementRef.current = video;
-  }, []);
 
   const handleTogglePlay = useCallback(() => {
     if (streamId) onTogglePlay(streamId);
@@ -110,10 +81,10 @@ const LiveVideoTileInner: React.FC<LiveVideoTileProps> = ({
           key={stream?.id ?? index}
           stream={stream!}
           autoPlay={true}
+          isPlaying={isPlaying}
           muted={isMuted}
           controls={false}
           objectFit="cover"
-          exposeVideoRef={handleExposeVideoRef}
           onError={handleError}
         />
       ) : (
